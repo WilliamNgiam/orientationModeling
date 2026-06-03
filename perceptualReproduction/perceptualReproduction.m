@@ -116,10 +116,11 @@ for dataIdx = 1:numel(dataList)
    F = figure; clf; hold on;
    setFigure(F, [0.2 0.2 0.4 0.4], '');
 
-   mu = codatable(chains, 'mu', @mean);
+   mu = nan(dp.nStimuli, 1);
    muBounds = nan(dp.nStimuli, 2);
    for idx = 1:dp.nStimuli
-      muBounds(idx, :) = prctile(chains.(sprintf('mu_%d', idx))(:), CI);
+      vals = chains.(sprintf('mu_%d', idx))(:);
+      [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CI);
    end
    muTruth = dp.stimuli;
 
@@ -154,15 +155,18 @@ for dataIdx = 1:numel(dataList)
    end
 
    for idx = 1:dp.nStimuli
-      plot(muTruth(idx)*ones(1, 2), muBounds(idx, :),  '-', ...
-         'color', pantone.ClassicBlue, ...
-         'linewidth', 1);
-      plot(muTruth(idx), mu(idx),  'o', ...
+      if muBounds(idx, 1) > muBounds(idx, 2)
+         plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+         plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+      else
+         plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+      end
+      plot(muTruth(idx), mu(idx), 'o', ...
          'markerfacecolor', pantone.ClassicBlue, ...
-         'markeredgecolor', 'w', ...
-         'linewidth', 0.5, ...
-         'markersize', 4);
-
+         'markeredgecolor', 'w', 'linewidth', 0.5, 'markersize', 4);
    end
    plot([0 pi], [0 pi], '-', ...
       'color', pantone.AuroraRed, 'linewidth', 0.5);
@@ -176,4 +180,17 @@ for dataIdx = 1:numel(dataList)
       print(sprintf('figures/%s_%s.eps', dataName, modelName), '-depsc');
    end
 
+end
+
+function [muMean, bounds] = summarizeHalfCircle(vals, CI)
+vals = vals(:);
+phi = mod(2 * vals, 2 * pi);
+phi0 = atan2(mean(sin(phi)), mean(cos(phi)));
+if phi0 < 0
+   phi0 = phi0 + 2 * pi;
+end
+rel = angle(exp(1i * (phi - phi0)));
+relBounds = prctile(rel, CI);
+muMean = mod(phi0 / 2, pi);
+bounds = mod(muMean + relBounds / 2, pi);
 end

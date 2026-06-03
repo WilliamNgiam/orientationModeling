@@ -1,0 +1,83 @@
+# Common representation for all three tasks (von Mises / doubled-angle)
+#
+# Shared psychological locations mu; separate noise for perceptual, memory,
+# and similarity tasks. Pi ambiguity handled via dvonmises on phi = 2*theta.
+#
+# Requires the von Mises JAGS module (../jags-vonMises).
+
+data {
+  omega3priorProbs <- c(1, 1, 1)
+  omega6priorProbs <- c(1, 1, 1, 1, 1, 1)
+}
+
+model {
+  pi2 <- 3.141592653589793 * 2
+  halfPi <- pi2 / 4
+
+  # Identifiability constraints on shared psychological locations
+  mu[1] <- 0
+  mu[2] ~ dunif(0, halfPi)
+  for (j in 3:nStimuli) {
+    mu[j] ~ dunif(0, halfPi * 2)
+  }
+
+  for (r in 1:nStimuli) {
+    phiMu[r] <- 2 * mu[r]
+  }
+
+  # Perceptual reproduction noise
+  sigmaP ~ dunif(0, halfPi * 2)
+  kappaP <- 1 / (sigmaP * sigmaP + 1e-8)
+
+  # Memory noise by set size
+  sigmaM[1] ~ dunif(0, halfPi * 2)
+  sigmaM[2] ~ dunif(0, halfPi * 2)
+  for (k in 1:2) {
+    kappaM[k] <- 1 / (sigmaM[k] * sigmaM[k] + 1e-8)
+  }
+
+  # Similarity sampling noise
+  sigmaS ~ dunif(0, halfPi * 2)
+  kappaS <- 1 / (sigmaS * sigmaS + 1e-8)
+
+  # Swap errors (memory)
+  omega3 ~ ddirch(omega3priorProbs[])
+  omega6 ~ ddirch(omega6priorProbs[])
+
+  # Perceptual trials
+  for (t in 1:nPTrials) {
+    yPCirc[t] ~ dvonmises(phiMu[sP[t]], kappaP)
+    yPCircP[t] ~ dvonmises(phiMu[sP[t]], kappaP)
+  }
+
+  # Memory trials
+  for (t in 1:nMTrials) {
+    xi[t, 1] ~ dcat(omega3[])
+    xi[t, 2] ~ dcat(omega6[])
+
+    recalled[t] <- sM[t, xi[t, setSize[t]]]
+    yMCirc[t] ~ dvonmises(phiMu[recalled[t]], kappaM[setSize[t]])
+    yMCircP[t] ~ dvonmises(phiMu[recalled[t]], kappaM[setSize[t]])
+  }
+
+  # Similarity trials
+  for (t in 1:nSTrials) {
+    phiA[t] ~ dvonmises(phiMu[a[t]], kappaS)
+    phiB[t] ~ dvonmises(phiMu[b[t]], kappaS)
+    phiC[t] ~ dvonmises(phiMu[c[t]], kappaS)
+    phiD[t] ~ dvonmises(phiMu[d[t]], kappaS)
+
+    dAB[t] <- min(abs(phiA[t] - phiB[t]), pi2 - abs(phiA[t] - phiB[t])) / 2
+    dCD[t] <- min(abs(phiC[t] - phiD[t]), pi2 - abs(phiC[t] - phiD[t])) / 2
+
+    yS[t] ~ dinterval(dAB[t] - dCD[t], 0)
+
+    phiAp[t] ~ dvonmises(phiMu[a[t]], kappaS)
+    phiBp[t] ~ dvonmises(phiMu[b[t]], kappaS)
+    phiCp[t] ~ dvonmises(phiMu[c[t]], kappaS)
+    phiDp[t] ~ dvonmises(phiMu[d[t]], kappaS)
+    dABp[t] <- min(abs(phiAp[t] - phiBp[t]), pi2 - abs(phiAp[t] - phiBp[t])) / 2
+    dCDp[t] <- min(abs(phiCp[t] - phiDp[t]), pi2 - abs(phiCp[t] - phiDp[t])) / 2
+    ySP[t] <- step(dABp[t] - dCDp[t])
+  }
+}

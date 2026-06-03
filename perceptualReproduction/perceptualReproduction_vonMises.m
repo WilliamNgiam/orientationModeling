@@ -1,0 +1,225 @@
+%% Perceptual reproduction model (von Mises)
+%
+% Von Mises rewrite of the model in orientationModeling/perceptualReproduction.
+% Uses the doubled-angle map (yCirc = 2*y) instead of latent +/- pi wraps.
+%
+% Requires on the MATLAB path (same as the original script):
+%   callbayes, codatable, grtable, gelmanrubin (trinity), moveAxis
+%   pantoneColors.mat (from orientationModeling/supportingFiles)
+%   supportingFiles: setFigure.m, Raxes.m, findKeepChains.m
+%
+% Requires the von Mises JAGS module in ../jags-vonMises (see README).
+
+clear; close all;
+preLoad = true;
+printFigures = true;
+
+thisDir = fileparts(mfilename('fullpath'));
+cd(thisDir);
+addpath(fullfile(thisDir, '..', 'supportingFiles'));
+addpath(fullfile(thisDir, '..'));
+
+% JAGS von Mises module
+jagsModuleDir = fullfile(thisDir, '..', 'jags-vonMises');
+jagsModuleFile = fullfile(jagsModuleDir, 'vonmises.so');
+if ~isfile(jagsModuleFile)
+   error(['Build the JAGS von Mises module first: cd %s && make\n' ...
+          'Expected: %s'], jagsModuleDir, jagsModuleFile);
+end
+setenv('JAGS_LIBS', jagsModuleDir);
+
+% graphical model script
+modelDir = './';
+modelName = 'perceptualReproduction_vonMises';
+engine = 'jags';
+
+% data sets
+dataList = {...
+   'tomicBaysPerception'; ...
+   };
+
+%% constants
+pi = 3.141592653589793;
+load(fullfile(thisDir, '..', 'supportingFiles', 'pantoneColors.mat'), 'pantone')
+fontSize = 18;
+CI = [2.5 97.5];
+
+% loop over data
+for dataIdx = 1:numel(dataList)
+   dataName = dataList{dataIdx};
+   switch dataName
+
+      case 'tomicBaysPerception'
+         dataDir = fullfile(thisDir, '..', 'data');
+         dataName = 'tomicBays';
+         load(fullfile(dataDir, dataName), 'dp');
+
+         y = dp.response;
+         yCirc = mod(2 * y, 2 * pi);
+         s = dp.sIdx;
+         nTrials = dp.nTrials;
+         nStimuli = dp.nStimuli;
+   end
+
+   %% sampling from graphical model
+   % parameters to monitor
+   params = {'mu', 'sigma', 'yCircP'};
+
+   % MCMC properties
+   nChains    = 12;     % number of MCMC chains
+   nBurnin    = 2e3;    % number of discarded burn-in samples
+   nSamples   = 2e3;    % number of collected samples
+   nThin      = 5;      % thinning interval
+   doParallel = 1;      % parallel chains via parallel toolbox
+
+   % assign MATLAB variables to the observed nodes
+   data = struct(...
+      's'       , s       , ...
+      'yCirc'   , yCirc   , ...
+      'nStimuli', nStimuli, ...
+      'nTrials' , nTrials );
+
+   % generator for initialization (mu[1] is fixed at 0 in the model)
+   generator = @()struct('sigma', rand * pi);
+
+   fileName = sprintf('%s_%s_%s.mat', modelName, dataName, engine);
+
+   if preLoad && isfile(fullfile('storage', fileName))
+      fprintf('Loading pre-stored samples for model %s on data %s\n', modelName, dataName);
+      load(fullfile('storage', fileName), 'chains', 'stats', 'diagnostics', 'info');
+   else
+      tic; % start clock
+      [stats, chains, diagnostics, info] = callbayes(engine, ...
+         'model'           , sprintf('%s/%s_%s.txt', modelDir, modelName, engine), ...
+         'data'            , data                                      , ...
+         'outputname'      , 'samples'                                 , ...
+         'init'            , generator                                 , ...
+         'datafilename'    , modelName                                 , ...
+         'initfilename'    , modelName                                 , ...
+         'scriptfilename'  , modelName                                 , ...
+         'logfilename'     , sprintf('/tmp/%s', modelName)             , ...
+         'nchains'         , nChains                                   , ...
+         'nburnin'         , nBurnin                                   , ...
+         'nsamples'        , nSamples                                  , ...
+         'monitorparams'   , params                                    , ...
+         'thin'            , nThin                                     , ...
+         'modules'         , {'vonmises'}                              , ...
+         'workingdir'      , sprintf('/tmp/%s', modelName)             , ...
+         'verbosity'       , 0                                         , ...
+         'saveoutput'      , true                                      , ...
+         'parallel'        , doParallel                                );
+      fprintf('%s took %f seconds!\n', upper(engine), toc);
+
+      % convergence of each parameter
+      disp('Convergence statistics:')
+      grtable(chains, 1.05)
+
+      % basic descriptive statistics
+      disp('Descriptive statistics for all chains:')
+      codatable(chains);
+
+      fprintf('Saving samples for model %s on data %s\n', modelName, dataName);
+      if ~isfolder('storage')
+         mkdir('storage');
+      end
+      save(fullfile('storage', fileName), 'chains', 'stats', 'diagnostics', 'info', '-v7.3');
+   end
+
+   % just convergent enough chains
+   [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.05);
+   fields = fieldnames(chains);
+   for i = 1:numel(fields)
+      chains.(fields{i}) = chains.(fields{i})(:, keepChains);
+   end
+
+   % posterior summary sigma
+   sigma = codatable(chains, 'sigma', @mean);
+   bounds = prctile(chains.sigma(:), CI);
+   fprintf('Posterior mean of sigma is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', sigma, bounds);
+
+   % inferred representation
+   F = figure; clf; hold on;
+   setFigure(F, [0.2 0.2 0.4 0.4], '');
+
+   muTruth = dp.stimuli;
+   mu = nan(dp.nStimuli, 1);
+   muBounds = nan(dp.nStimuli, 2);
+   for idx = 1:dp.nStimuli
+      vals = chains.(sprintf('mu_%d', idx))(:);
+      [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CI);
+   end
+
+   cla; hold on;
+   set(gca, ...
+      'xlim'       , [0 pi]    , ...
+      'xtick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
+      'xticklabelrot', 0, ...
+      'xticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
+      'ylim'       , [0 pi]    , ...
+      'ytick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
+      'yticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
+      'ticklabelinterpreter', 'latex', ...
+      'box'        , 'off'     , ...
+      'tickdir'    , 'out'     , ...
+      'layer'      , 'top'     , ...
+      'ticklength' , [0.02 0]  , ...
+      'clipping'   , 'off'     , ...
+      'fontsize'   , fontSize  );
+   axis square;
+   ylabel('Psychological', 'fontsize', fontSize);
+   xlabel('Physical', 'fontsize', fontSize);
+   moveAxis(gca, [1 1 0.95 0.95], [0 0.025 0 0]);
+   Raxes(gca, 0.02, 0.01);
+
+   for i = pi/4:pi/4:3*pi/4
+      plot([i i], [0 pi], '-', ...
+         'color', pantone.GlacierGray);
+      plot([0 pi], [i i], '-', ...
+         'color', pantone.GlacierGray);
+   end
+
+   for idx = 1:dp.nStimuli
+      if muBounds(idx, 1) > muBounds(idx, 2)
+         % Credible arc crosses the 0/pi seam.
+         plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+         plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+      else
+         plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+      end
+      plot(muTruth(idx), mu(idx),  'o', ...
+         'markerfacecolor', pantone.ClassicBlue, ...
+         'markeredgecolor', 'w', ...
+         'linewidth', 0.5, ...
+         'markersize', 4);
+   end
+   plot([0 pi], [0 pi], '-', ...
+      'color', pantone.AuroraRed, 'linewidth', 0.5);
+
+   % print
+   if printFigures
+      if ~isfolder('figures')
+         mkdir('figures');
+      end
+      figBase = sprintf('figures/%s_%s', dataName, modelName);
+      print([figBase '.png'], '-dpng');
+      print([figBase '.eps'], '-depsc');
+   end
+
+end
+
+function [muMean, bounds] = summarizeHalfCircle(vals, CI)
+% Boundary-aware summary on [0, pi) via doubled-angle circular centering.
+vals = vals(:);
+phi = mod(2 * vals, 2 * pi);
+phi0 = atan2(mean(sin(phi)), mean(cos(phi)));
+if phi0 < 0
+   phi0 = phi0 + 2 * pi;
+end
+rel = angle(exp(1i * (phi - phi0))); % in (-pi, pi]
+relBounds = prctile(rel, CI);
+muMean = mod(phi0 / 2, pi);
+bounds = mod(muMean + relBounds / 2, pi);
+end

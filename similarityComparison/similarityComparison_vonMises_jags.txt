@@ -1,0 +1,42 @@
+# Similarity comparison model (von Mises / doubled-angle parameterization)
+#
+# Mental samples live on the doubled circle; half-circle similarity is
+# min(|phi1-phi2|, 2*pi-|phi1-phi2|) / 2.
+#
+# Requires the von Mises JAGS module (../jags-vonMises).
+
+data{
+  pi = 3.141592653589793
+}
+
+model {
+  pi2 <- 2 * pi
+
+  # Identifiability constraints (match original: mu[1] near zero)
+  mu[1] ~ dunif(0, 1e-6)
+  mu[2] ~ dunif(0, pi/2)
+  for (j in 3:nStimuli) {
+    mu[j] ~ dunif(0, pi)
+  }
+
+  for (r in 1:nStimuli) {
+    phiMu[r] <- 2 * mu[r]
+  }
+
+  sigma ~ dunif(0, pi)
+  kappa <- 1 / (sigma * sigma + 1e-8)
+
+  for (t in 1:nTrials) {
+    xAtmp[t] ~ dvonmises(phiMu[a[t]], kappa)
+    xBtmp[t] ~ dvonmises(phiMu[b[t]], kappa)
+    xCtmp[t] ~ dvonmises(phiMu[c[t]], kappa)
+    xDtmp[t] ~ dvonmises(phiMu[d[t]], kappa)
+
+    dAB[t] <- min(abs(xAtmp[t] - xBtmp[t]), pi2 - abs(xAtmp[t] - xBtmp[t])) / 2
+    dCD[t] <- min(abs(xCtmp[t] - xDtmp[t]), pi2 - abs(xCtmp[t] - xDtmp[t])) / 2
+
+    y[t] ~ dinterval(dAB[t] - dCD[t], 0)
+
+  }
+
+}

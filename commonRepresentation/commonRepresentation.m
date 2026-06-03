@@ -2,6 +2,7 @@
 
 clear; close all;
 preLoad = true;
+printFigures = true;
 
 % graphical model script
 modelDir = './';
@@ -12,7 +13,6 @@ engine = 'jags';
 dataList = {...
    'tomicBays'; ...
    };
-
 
 %% constants
 pi = 3.1415;
@@ -182,10 +182,9 @@ for dataIdx = 1:numel(dataList)
    for idx = 1:dp.nStimuli
       vals = chains.(sprintf('mu_%d', idx))(:);
       if idx > 66 % so hard to get convergent chains here
-         vals = vals(find(vals > 2));
+         vals = vals(vals > 2);
       end
-      mu(idx) = mean(vals);
-      muBounds(idx, :) = prctile(vals, CI);
+      [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CI);
    end
    muTruth = dp.stimuli;
 
@@ -220,16 +219,42 @@ for dataIdx = 1:numel(dataList)
    end
 
    for idx = 1:dp.nStimuli
-      plot(muTruth(idx)*ones(1, 2), muBounds(idx, :),  '-', ...
-         'color', pantone.ClassicBlue, ...
-         'linewidth', 1);
-      plot(muTruth(idx), mu(idx),  'o', ...
+      if muBounds(idx, 1) > muBounds(idx, 2)
+         plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+         plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+      else
+         plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
+            'color', pantone.ClassicBlue, 'linewidth', 1);
+      end
+      plot(muTruth(idx), mu(idx), 'o', ...
          'markerfacecolor', pantone.ClassicBlue, ...
-         'markeredgecolor', 'w', ...
-         'linewidth', 0.5, ...
-         'markersize', 4);
-
+         'markeredgecolor', 'w', 'linewidth', 0.5, 'markersize', 4);
    end
    plot([0 pi], [0 pi], '-', ...
       'color', pantone.AuroraRed, 'linewidth', 0.5);
+
+         % print
+   if printFigures
+      if ~isfolder('figures')
+         !mkdir figures
+      end
+      print(sprintf('figures/%s_%s.png', dataName, modelName), '-dpng');
+      print(sprintf('figures/%s_%s.eps', dataName, modelName), '-depsc');
+   end
+
+end
+
+function [muMean, bounds] = summarizeHalfCircle(vals, CI)
+vals = vals(:);
+phi = mod(2 * vals, 2 * pi);
+phi0 = atan2(mean(sin(phi)), mean(cos(phi)));
+if phi0 < 0
+   phi0 = phi0 + 2 * pi;
+end
+rel = angle(exp(1i * (phi - phi0)));
+relBounds = prctile(rel, CI);
+muMean = mod(phi0 / 2, pi);
+bounds = mod(muMean + relBounds / 2, pi);
 end

@@ -1,0 +1,46 @@
+# Memory reproduction model (von Mises / doubled-angle parameterization)
+#
+# Requires the von Mises JAGS module (../jags-vonMises).
+
+data {
+  omega3priorProbs <- c(1, 1, 1)
+  omega6priorProbs <- c(1, 1, 1, 1, 1, 1)
+}
+
+model {
+  pi2 <- 3.141592653589793 * 2
+  halfPi <- pi2 / 4
+
+  # Identifiability constraints on psychological locations (semi-circle)
+  mu[1] <- 0
+  mu[2] ~ dunif(0, halfPi)
+  for (j in 3:nStimuli) {
+    mu[j] ~ dunif(0, halfPi * 2)
+  }
+
+  for (r in 1:nStimuli) {
+    phiMu[r] <- 2 * mu[r]
+  }
+
+  # Memory noise by set size (setSize[t] is 1 for 3 items, 2 for 6 items)
+  sigma[1] ~ dunif(0, halfPi * 2)
+  sigma[2] ~ dunif(0, halfPi * 2)
+  for (k in 1:2) {
+    kappa[k] <- 1 / (sigma[k] * sigma[k] + 1e-8)
+  }
+
+  # Swap-error probabilities
+  omega3prior ~ ddirch(omega3priorProbs[])
+  omega6prior ~ ddirch(omega6priorProbs[])
+  omega3 ~ ddirch(omega3priorProbs[])
+  omega6 ~ ddirch(omega6priorProbs[])
+
+  for (t in 1:nTrials) {
+    xi[t, 1] ~ dcat(omega3[])
+    xi[t, 2] ~ dcat(omega6[])
+
+    recalled[t] <- s[t, xi[t, setSize[t]]]
+    yCirc[t] ~ dvonmises(phiMu[recalled[t]], kappa[setSize[t]])
+    yCircP[t] ~ dvonmises(phiMu[recalled[t]], kappa[setSize[t]])
+  }
+}

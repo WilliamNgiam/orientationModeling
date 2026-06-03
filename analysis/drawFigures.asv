@@ -9,12 +9,12 @@ analysisList = {...
    % 'threeScatter'; ...
    % 'fourScatter'; ...
    % 'twoRepresentations'; ...
-   % 'alternativeSimilarity'; ...
-   % 'clusterSavageDickey'; ...
+    %'clusterSavageDickey'; ...
    % 'statisticalSummaries'; ...
    %'descriptiveAdequacyPerceptual'; ...
-   % 'descriptiveAdequacyMemory'; ...
-   'descriptiveAdequacySimilarity'; ...
+    'descriptiveAdequacyMemory'; ...
+     'descriptiveAdequacyMemoryNoSwap'; ...
+  % 'descriptiveAdequacySimilarity'; ...
    };
 
 % load data
@@ -70,10 +70,11 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             % posterior mean and CIs for mu
-            mu = codatable(chains, 'mu', @mean);
+            mu = nan(ds.nStimuli, 1);
             muBounds = nan(ds.nStimuli, 2);
             for idx = 1:ds.nStimuli
-               muBounds(idx, :) = prctile(chains.(sprintf('mu_%d', idx))(:), CIbounds);
+               vals = chains.(sprintf('mu_%d', idx))(:);
+               [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CIbounds);
             end
             muTruth = ds.stimuli;
 
@@ -117,14 +118,18 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             for idx = 1:dp.nStimuli
-               plot(muTruth(idx)*ones(1, 2), muBounds(idx, :),  '-', ...
-                  'color', pantone.ClassicBlue, ...
-                  'linewidth', 1);
-               plot(muTruth(idx), mu(idx),  'o', ...
+               if muBounds(idx, 1) > muBounds(idx, 2)
+                  plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+                  plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+               else
+                  plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+               end
+               plot(muTruth(idx), mu(idx), 'o', ...
                   'markerfacecolor', pantone.ClassicBlue, ...
-                  'markeredgecolor', 'w', ...
-                  'linewidth', 0.5, ...
-                  'markersize', 4);
+                  'markeredgecolor', 'w', 'linewidth', 0.5, 'markersize', 4);
             end
             plot([0 pi], [0 pi], '-', ...
                'color', pantone.AuroraRed, 'linewidth', 0.5);
@@ -172,10 +177,11 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             if modelIdx ~=4
-               mu = codatable(chains, 'mu', @mean);
+               mu = nan(dm.nStimuli, 1);
                muBounds = nan(dm.nStimuli, 2);
                for idx = 1:dm.nStimuli
-                  muBounds(idx, :) = prctile(chains.(sprintf('mu_%d', idx))(:), CIbounds);
+                  vals = chains.(sprintf('mu_%d', idx))(:);
+                  [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CIbounds);
                end
             else
                mu = nan(dp.nStimuli, 1);
@@ -183,10 +189,9 @@ for analysisIdx = 1:numel(analysisList)
                for idx = 1:dp.nStimuli
                   vals = chains.(sprintf('mu_%d', idx))(:);
                   if idx > 66 % so hard to get convergent chains here
-                     vals = vals(find(vals > 2));
+                     vals = vals(vals > 2);
                   end
-                  mu(idx) = mean(vals);
-                  muBounds(idx, :) = prctile(vals, CIbounds);
+                  [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CIbounds);
                end
             end
             muTruth = dp.stimuli;
@@ -226,14 +231,18 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             for idx = 1:dp.nStimuli
-               plot(muTruth(idx)*ones(1, 2), muBounds(idx, :),  '-', ...
-                  'color', pantone.ClassicBlue, ...
-                  'linewidth', 1);
-               plot(muTruth(idx), mu(idx),  'o', ...
+               if muBounds(idx, 1) > muBounds(idx, 2)
+                  plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+                  plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+               else
+                  plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+               end
+               plot(muTruth(idx), mu(idx), 'o', ...
                   'markerfacecolor', pantone.ClassicBlue, ...
-                  'markeredgecolor', 'w', ...
-                  'linewidth', 0.5, ...
-                  'markersize', 4);
+                  'markeredgecolor', 'w', 'linewidth', 0.5, 'markersize', 4);
             end
             plot([0 pi], [0 pi], '-', ...
                'color', pantone.AuroraRed, 'linewidth', 0.5);
@@ -265,6 +274,18 @@ for analysisIdx = 1:numel(analysisList)
 
             fprintf('Loading pre-stored samples from file %s\n', fileName);
             load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+
+             % just keep converged chains
+            switch modelIdx
+               case 1 % perceptual
+                  [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
+               case 2 % similarity
+                  [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
+            end
+            fields = fieldnames(chains);
+            for i = 1:numel(fields)
+               chains.(fields{i}) = chains.(fields{i})(:, keepChains);
+            end
 
             mu = codatable(chains, 'mu', @mean);
             muTruth = ds.stimuli;
@@ -310,125 +331,7 @@ for analysisIdx = 1:numel(analysisList)
             end
          end
 
-      case 'alternativeSimilarity'
-
-         fileName = 'similarityComparisonAlternative_tomicBays_jags';
-         fontSize = 20;
-         CIbounds = [2.5 97.5];
-         thresh = 2;
-
-         fprintf('Loading pre-stored samples from file %s\n', fileName);
-         load(sprintf('storage/%s', fileName), 'chains');
-
-         % just convergent chains
-         [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
-         fields = fieldnames(chains);
-         for i = 1:numel(fields)
-            chains.(fields{i}) = chains.(fields{i})(:, keepChains);
-         end
-
-         mu = codatable(chains, 'mu', @mean);
-         for idx = 1:ds.nStimuli
-            muBounds(idx, :) = prctile(chains.(sprintf('mu_%d', idx))(:), CIbounds);
-         end
-         muTruth = ds.stimuli;
-
-         F = figure; clf; hold on;
-         setFigure(F, [0.2 0.2 0.6 0.5], '');
-
-         subplot(1, 2, 1); cla; hold on;
-         set(gca, ...
-            'xlim'       , [0 pi]    , ...
-            'xtick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-            'xticklabelrot', 0, ...
-            'xticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-            'ylim'       , [0 pi]    , ...
-            'ytick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-            'yticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-            'ticklabelinterpreter', 'latex', ...
-            'box'        , 'off'     , ...
-            'tickdir'    , 'out'     , ...
-            'layer'      , 'top'     , ...
-            'ticklength' , [0.02 0]  , ...
-            'layer'      , 'top'     , ...
-            'clipping'   , 'off'     , ...
-            'fontsize'   , fontSize  );
-         axis square;
-         ylabel('Psychological', 'fontsize', fontSize);
-         xlabel('Physical', 'fontsize', fontSize);
-         text(-1, 3.5, lower(char(64+1)), 'fontsize', fontSize, 'fontweight', 'bold');
-         moveAxis(gca, [1 1 0.95 0.95], [0 0.025 0 0]);
-         Raxes(gca, 0.02, 0.01);
-
-         for i = pi/4:pi/4:3*pi/4
-            plot([i i], [0 pi], '-', ...
-               'color', pantone.GlacierGray);
-            plot([0 pi], [i i], '-', ...
-               'color', pantone.GlacierGray);
-         end
-
-         for idx = 1:ds.nStimuli
-            plot( muTruth(idx)*ones(1, 2), muBounds(idx, :), '-', ...
-               'color', pantone.ClassicBlue, ...
-               'linewidth', 1);
-            plot(muTruth(idx), mu(idx),  'o', ...
-               'markerfacecolor', pantone.ClassicBlue, ...
-               'markeredgecolor', 'w', ...
-               'linewidth', 0.5, ...
-               'markersize', 4);
-         end
-         plot([0 pi], [0 pi], '-', ...
-            'color', pantone.AuroraRed, 'linewidth', 0.5);
-
-         m = nan(ds.nStimuli, ds.nStimuli);
-         for matchA = 1:ds.nStimuli
-            for matchB = 1:ds.nStimuli
-               match = find(abs(ds.aIdx - matchA) <= thresh & abs(ds.bIdx - matchB) <= thresh);
-               m(matchA, matchB) = (sum(ds.response(match))+1)/(length(match)+2);
-            end
-         end
-
-         subplot(1, 2, 2); cla; hold on;
-         set(gca, ...
-            'xlim'       , [0 pi]    , ...
-            'xtick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-            'xticklabelrot', 0, ...
-            'xticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-            'ylim'       , [0 pi]    , ...
-            'ytick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-            'yticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-            'ticklabelinterpreter', 'latex', ...
-            'box'        , 'off'     , ...
-            'tickdir'    , 'out'     , ...
-            'layer'      , 'top'     , ...
-            'ticklength' , [0.02 0]  , ...
-            'layer'      , 'top'     , ...
-            'clipping'   , 'off'     , ...
-            'fontsize'   , fontSize  );
-         axis square;
-         xlabel('Stimulus A', 'fontsize', fontSize);
-         ylabel('Stimulus B', 'fontsize', fontSize);
-         text(-1, 3.5, lower(char(64+2)), 'fontsize', fontSize, 'fontweight', 'bold');
-         moveAxis(gca, [1 1 0.95 0.95], [0 0.025 0 0]);
-         Raxes(gca, 0.01, 0.01);
-
-         for i = 1:ds.nStimuli
-            for j = 1:ds.nStimuli
-               if ~isnan(m(i, j))
-                  if i <= j
-                     clr = m(i, j)*[1 1 1] + (1-m(i, j))*[0 0 0];
-                     % clr = exp(-1/(1+(m(i, j)-1/2)/10))*pantone.Custard + (1-m(i, j))*pantone.ClassicBlue;
-                  else
-                     clr = [1 1 1];
-                  end
-                  plot((i-1)/72*pi, (j-1)/72*pi, 's', ...
-                     'markerfacecolor', clr, ...
-                     'markeredgecolor', 'w', ...
-                     'markersize', 10);
-               end
-            end
-         end
-
+     
       case 'clusterSavageDickey'
 
          fileName = '../clusterRepresentation/storage/clusterRepresentation_tomicBays_jags';
@@ -514,7 +417,7 @@ for analysisIdx = 1:numel(analysisList)
 
       case 'statisticalSummaries'
 
-         fid = fopen('statisticalSummaries.txt', 'w');
+         fid = fopen('results/statisticalSummaries.txt', 'w');
 
          printFigures = false;
 
@@ -536,7 +439,7 @@ for analysisIdx = 1:numel(analysisList)
          for i = 1:numel(fields)
             chains.(fields{i}) = chains.(fields{i})(:, keepChains);
          end
-         fprintf(fid, '\n----------\nPerceptual Reconstruction\n\n');
+         fprintf(fid, '\n----------\nPerceptual Reproduction\n\n');
 
          sigma = codatable(chains, 'sigma', @mean);
          bounds = prctile(chains.sigma(:), CIbounds);
@@ -552,7 +455,7 @@ for analysisIdx = 1:numel(analysisList)
          for i = 1:numel(fields)
             chains.(fields{i}) = chains.(fields{i})(:, keepChains);
          end
-         fprintf(fid, '\n----------\nMemory Reconstruction\n\n');
+         fprintf(fid, '\n----------\nMemory Reproduction\n\n');
 
          % posterior summary for sigmas
          sigma3 = codatable(chains, 'sigma_1', @mean);
@@ -723,9 +626,9 @@ for analysisIdx = 1:numel(analysisList)
 
       case 'descriptiveAdequacyPerceptual'
 
-         if exist('descriptiveAdequacyPerceptualPreSave.mat', 'file')
+         if exist('storage/descriptiveAdequacyPerceptualPreSave.mat', 'file')
 
-            load descriptiveAdequacyPerceptualPreSave count binsC
+            load('storage/descriptiveAdequacyPerceptualPreSave', 'credInterval', 'mn', 'binsC');
 
          else
 
@@ -763,7 +666,7 @@ for analysisIdx = 1:numel(analysisList)
                credInterval(i, :) = prctile(vals, CI);
             end
 
-            save descriptiveAdequacyPerceptualPreSave mn credInterval binsC
+            save('storage/descriptiveAdequacyPerceptualPreSave', 'mn', 'credInterval', 'binsC');
 
          end
 
@@ -813,7 +716,7 @@ for analysisIdx = 1:numel(analysisList)
 
          if exist('descriptiveAdequacyMemoryPreSave.mat', 'file')
 
-            load descriptiveAdequacyMemoryPreSave count binsC
+            load('storage/descriptiveAdequacyMemoryPreSave', 'count', 'binsC');
 
          else
 
@@ -852,6 +755,92 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             save descriptiveAdequacyMemoryPreSave mn credInterval binsC
+         end
+
+         fontSize = 18;
+         scale = 0.25;
+         clr = pantone.DuskBlue;
+
+         F = figure; clf; hold on;
+         setFigure(F, [0.2 0.2 0.4 0.6], '');
+
+         set(gca, ...
+            'xlim'       , [0 pi]    , ...
+            'xtick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
+            'xticklabelrot', 0, ...
+            'xticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
+            'ylim'       , [-0.8 pi+0.8]    , ...
+            'ytick'      , [ 0 pi/4 pi/2 3*pi/4 pi ]   , ...
+            'yticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
+            'ticklabelinterpreter', 'latex', ...
+            'box'        , 'off'     , ...
+            'tickdir'    , 'out'     , ...
+            'layer'      , 'top'     , ...
+            'ticklength' , [0.02 0]  , ...
+            'layer'      , 'top'     , ...
+            'clipping'   , 'off'     , ...
+            'fontsize'   , fontSize  );
+         xlabel('Data', 'fontsize', fontSize);
+         ylabel('Posterior Predictive', 'fontsize', fontSize);
+         moveAxis(gca, [1 1 0.9 0.9], [0.025 0.025 0 0]);
+         Raxes(gca, 0.01, 0.03);
+
+
+         for i = 1:length(binsC)
+            plot([binsC(i) binsC(i)], credInterval(i, :), '-', ...
+               'color', pantone.Custard);
+         end
+         for i = 1:length(binsC)
+
+            plot(binsC(i), mn(i), 'o', ...
+               'markerfacecolor', pantone.ClassicBlue, ...
+               'markersize', 2, ...
+               'markeredgecolor', pantone.ClassicBlue);
+         end
+
+          case 'descriptiveAdequacyMemoryNoSwap'
+
+         if exist('descriptiveAdequacyMemoryNoSwapPreSave.mat', 'file')
+
+            load descriptiveAdequacyMemoryNoSwapPreSave count binsC
+
+         else
+
+            CI = [25 75];
+
+            lo = 0; hi = pi; eps = 0.01;
+            binsC = lo:eps:hi;
+            binsE = lo-eps/2:eps:hi+eps/2;
+
+            fileName = '../memoryReproduction/storage/memoryReproductionNoSwap_tomicBays_jags';
+            fprintf('Loading pre-stored samples from file %s\n', fileName);
+            load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+
+            dm.response = mod(dm.response, pi);
+
+            [~, ~, rIdx] = histcounts(dm.response, 'binedges', binsE);
+
+            mn = nan(numel(binsC), 1);
+            credInterval = nan(numel(binsC), 2);
+            for i = 1:length(binsC)
+               match = find(rIdx == i);
+               nPer = numel(chains.yP_1);   % e.g. 2000*12, or use 2000*12 explicitly
+               vals = zeros(numel(match) * nPer, 1);
+               idx = 1;
+               for j = 1:numel(match)
+                  k = match(j);
+                  fname = sprintf('yP_%d', k);
+                  block = chains.(fname)(:);
+                  vals(idx:idx+numel(block)-1) = block;
+                  idx = idx + numel(block);
+               end
+               k = round((binsC(i) - vals) ./ pi);
+               vals = vals + k .* pi;
+               mn(i) = mean(vals);
+               credInterval(i, :) = prctile(vals, CI);
+            end
+
+            save descriptiveAdequacyMemoryNoSwapPreSave mn credInterval binsC
          end
 
          fontSize = 18;
@@ -953,8 +942,8 @@ for analysisIdx = 1:numel(analysisList)
          end
 
          fontSize = 18;
-         lo = 0; hi = 1; eps = 0.01; xTick = 0.1;
-         clr = pantone.DuskBlue;
+         lo = 0; hi = 1; eps = 0.02; xTick = 0.1;
+         clr = pantone.ClassicBlue;
 
          binsC = lo:eps:hi;
          binsE = lo-eps/2:eps:hi+eps/2;
@@ -978,7 +967,14 @@ for analysisIdx = 1:numel(analysisList)
          moveAxis(gca, [1 1 1 1], [0 0.025 0 0]);
          Raxes(gca, 0.01, 0.01);
 
-         count =- 
+         count = histcounts(pC, 'binedges', binsE, 'norm', 'prob');
+         H = bar(binsC, count);
+         set(H, 'facecolor', clr, 'edgecolor', 'w', 'barwidth', 0.9);
+
+         fprintf('\n mean agreement is %1.2f, with interquartile range %1.2f-%1.2f\n', ...
+            mean(pC), prctile(pC, [2.5 97.5]));
+         fprintf('\n median agreement is %d\n', ...
+            round(100*median(pC)));
 
    end
 
@@ -991,4 +987,17 @@ for analysisIdx = 1:numel(analysisList)
       print(sprintf('figures/%s.eps', analysisName), '-depsc');
    end
 
+end
+
+function [muMean, bounds] = summarizeHalfCircle(vals, CI)
+vals = vals(:);
+phi = mod(2 * vals, 2 * pi);
+phi0 = atan2(mean(sin(phi)), mean(cos(phi)));
+if phi0 < 0
+   phi0 = phi0 + 2 * pi;
+end
+rel = angle(exp(1i * (phi - phi0)));
+relBounds = prctile(rel, CI);
+muMean = mod(phi0 / 2, pi);
+bounds = mod(muMean + relBounds / 2, pi);
 end

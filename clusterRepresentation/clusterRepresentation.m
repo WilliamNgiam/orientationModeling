@@ -2,6 +2,7 @@
 
 clear; close all;
 preLoad = true;
+printFigures = true;
 
 % graphical model script
 modelDir = './';
@@ -148,28 +149,20 @@ for dataIdx = 1:numel(dataList)
 
    end
 
+   keepChains = [11 15 19]; % by visual inspection to ensure similarity follows higher-likelihood mode
+   fields = fieldnames(chains);
+   for i = 1:numel(fields)
+      chains.(fields{i}) = chains.(fields{i})(:, keepChains);
+   end
 
-    % just convergent enough chains
-      % [keepChainsPM, rHat] = findKeepChains(chains.gammaPM, 2, 1.1);
-      % [keepChainsPS, rHat] = findKeepChains(chains.gammaPS, 2, 1.1);
-      % keepChains = intersect(keepChainsPM, keepChainsPS)
-      keepChains = [11 15 19]; % by visual inspection to ensure similarity follows higher-likelihood mode
-      fields = fieldnames(chains);
-      for i = 1:numel(fields)
-         chains.(fields{i}) = chains.(fields{i})(:, keepChains);
-      end
-
-      % two-dimensional savage dickey analysis
-         gammaLo = 0; gammaHi = 3; gammaTick = 1; gammaEps = 0.052;
+   % two-dimensional savage dickey analysis
+   gammaLo = 0; gammaHi = 3; gammaTick = 1; gammaEps = 0.052;
    gammaE = (gammaLo-gammaEps/2):gammaEps:(gammaHi + gammaEps/2);
    gammaC = gammaLo:gammaEps:gammaHi;
 
    countPosterior = histcounts2(chains.gammaPM(:), chains.gammaPS(:), ...
       gammaE, gammaE, ...
       'normalization', 'probability');
-   % countPrior = histcounts2(chains.gammaPrior(:), chains.gammaPrior(randperm(length(chains.gammaPrior(:))))', ...
-   %    gammaE, gammaE, ...
-   %    'normalization', 'probability');
    count = histcounts(chains.gammaPrior(:), gammaE);
    count(1) = 2*count(1);
    count = count/sum(count);
@@ -234,20 +227,13 @@ L = legend(H, {'prior', 'posterior'}, ...
    'location', 'northeast');
 set(L, 'position', get(L, 'position') + [0.075 0.05 0 0]);
 
-
-    % muP = get_matrix_from_coda(chains, 'muP');
-    % muM = get_matrix_from_coda(chains, 'muM');
-    % muS = get_matrix_from_coda(chains, 'muS');
-    % 
-    % figure; hold on;
-    % subplot(131); hold on;
-    % plot(ds.stimuli, muP(1:nStimuli), 'ko', 'markersize', 2, 'markerfacecolor', 'k');
-    % axis square;
-    % subplot(132); hold on;
-    % plot(ds.stimuli, muM(1:nStimuli), 'ko', 'markersize', 2, 'markerfacecolor', 'k');
-    % axis square;
-    % subplot(133); hold on;
-    % plot(ds.stimuli, muS(1:nStimuli), 'ko', 'markersize', 2, 'markerfacecolor', 'k');
-    % axis square;
-
+ if printFigures
+      if ~isfolder('figures')
+         mkdir('figures');
+      end
+      figBase = sprintf('figures/%s_%s', dataName, modelName);
+      print([figBase '.png'], '-dpng');
+      print([figBase '.eps'], '-depsc');
+   end
+  
 end

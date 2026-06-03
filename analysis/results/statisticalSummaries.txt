@@ -1,11 +1,11 @@
 
- ----------
-Perceptual Model
+----------
+Perceptual Reproduction
 
 Posterior mean of sigma is 0.157, with 95% CI (0.153, 0.160)
 
 ----------
-Memory Model
+Memory Reproduction
 
 Posterior mean of sigma for set size 3 is 0.525, with 95% CI (0.507, 0.543)
 Posterior mean of sigma for set size 6 is 0.658, with 95% CI (0.625, 0.693)
@@ -25,7 +25,7 @@ Via multivariate kernel density estimation, the log BF for the null is -701 for 
 ----------
 Similarity Comparison
 
-Posterior mean of sigma is 0.273, with 95% CI (0.267, 0.278)
+Posterior mean of sigma is 0.274, with 95% CI (0.269, 0.278)
 
 ----------
 Cluster Bayes Factor

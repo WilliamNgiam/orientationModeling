@@ -1,0 +1,34 @@
+# Memory reproduction model without swaps (von Mises / doubled-angle)
+#
+# Target is always recalled; no swap-error process. Pi ambiguity is handled
+# by the doubled-angle von Mises likelihood.
+#
+# Requires the von Mises JAGS module (../jags-vonMises).
+
+model {
+  pi2 <- 3.141592653589793 * 2
+  halfPi <- pi2 / 4
+
+  # Identifiability constraints on psychological locations (semi-circle)
+  mu[1] <- 0
+  mu[2] ~ dunif(0, halfPi)
+  for (j in 3:nStimuli) {
+    mu[j] ~ dunif(0, halfPi * 2)
+  }
+
+  for (r in 1:nStimuli) {
+    phiMu[r] <- 2 * mu[r]
+  }
+
+  # Memory noise by set size (setSize[t] is 1 for 3 items, 2 for 6 items)
+  sigma[1] ~ dunif(0, halfPi * 2)
+  sigma[2] ~ dunif(0, halfPi * 2)
+  for (k in 1:2) {
+    kappa[k] <- 1 / (sigma[k] * sigma[k] + 1e-8)
+  }
+
+  for (t in 1:nTrials) {
+    yCirc[t] ~ dvonmises(phiMu[s[t]], kappa[setSize[t]])
+    yCircP[t] ~ dvonmises(phiMu[s[t]], kappa[setSize[t]])
+  }
+}

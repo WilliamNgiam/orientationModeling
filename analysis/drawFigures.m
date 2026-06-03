@@ -9,13 +9,13 @@ analysisList = {...
    % 'threeScatter'; ...
    % 'fourScatter'; ...
    % 'twoRepresentations'; ...
-   % 'alternativeSimilarity'; ...
-   % 'clusterSavageDickey'; ...
+    %'clusterSavageDickey'; ...
    % 'statisticalSummaries'; ...
    %'descriptiveAdequacyPerceptual'; ...
    % 'descriptiveAdequacyMemory'; ...
-     'descriptiveAdequacyMemoryNoSwap'; ...
+    % 'descriptiveAdequacyMemoryNoSwap'; ...
   % 'descriptiveAdequacySimilarity'; ...
+    'swapExamples'; ...
    };
 
 % load data
@@ -71,10 +71,11 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             % posterior mean and CIs for mu
-            mu = codatable(chains, 'mu', @mean);
+            mu = nan(ds.nStimuli, 1);
             muBounds = nan(ds.nStimuli, 2);
             for idx = 1:ds.nStimuli
-               muBounds(idx, :) = prctile(chains.(sprintf('mu_%d', idx))(:), CIbounds);
+               vals = chains.(sprintf('mu_%d', idx))(:);
+               [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CIbounds);
             end
             muTruth = ds.stimuli;
 
@@ -118,14 +119,18 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             for idx = 1:dp.nStimuli
-               plot(muTruth(idx)*ones(1, 2), muBounds(idx, :),  '-', ...
-                  'color', pantone.ClassicBlue, ...
-                  'linewidth', 1);
-               plot(muTruth(idx), mu(idx),  'o', ...
+               if muBounds(idx, 1) > muBounds(idx, 2)
+                  plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+                  plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+               else
+                  plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+               end
+               plot(muTruth(idx), mu(idx), 'o', ...
                   'markerfacecolor', pantone.ClassicBlue, ...
-                  'markeredgecolor', 'w', ...
-                  'linewidth', 0.5, ...
-                  'markersize', 4);
+                  'markeredgecolor', 'w', 'linewidth', 0.5, 'markersize', 4);
             end
             plot([0 pi], [0 pi], '-', ...
                'color', pantone.AuroraRed, 'linewidth', 0.5);
@@ -173,10 +178,11 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             if modelIdx ~=4
-               mu = codatable(chains, 'mu', @mean);
+               mu = nan(dm.nStimuli, 1);
                muBounds = nan(dm.nStimuli, 2);
                for idx = 1:dm.nStimuli
-                  muBounds(idx, :) = prctile(chains.(sprintf('mu_%d', idx))(:), CIbounds);
+                  vals = chains.(sprintf('mu_%d', idx))(:);
+                  [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CIbounds);
                end
             else
                mu = nan(dp.nStimuli, 1);
@@ -184,10 +190,9 @@ for analysisIdx = 1:numel(analysisList)
                for idx = 1:dp.nStimuli
                   vals = chains.(sprintf('mu_%d', idx))(:);
                   if idx > 66 % so hard to get convergent chains here
-                     vals = vals(find(vals > 2));
+                     vals = vals(vals > 2);
                   end
-                  mu(idx) = mean(vals);
-                  muBounds(idx, :) = prctile(vals, CIbounds);
+                  [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CIbounds);
                end
             end
             muTruth = dp.stimuli;
@@ -227,14 +232,18 @@ for analysisIdx = 1:numel(analysisList)
             end
 
             for idx = 1:dp.nStimuli
-               plot(muTruth(idx)*ones(1, 2), muBounds(idx, :),  '-', ...
-                  'color', pantone.ClassicBlue, ...
-                  'linewidth', 1);
-               plot(muTruth(idx), mu(idx),  'o', ...
+               if muBounds(idx, 1) > muBounds(idx, 2)
+                  plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+                  plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+               else
+                  plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
+                     'color', pantone.ClassicBlue, 'linewidth', 1);
+               end
+               plot(muTruth(idx), mu(idx), 'o', ...
                   'markerfacecolor', pantone.ClassicBlue, ...
-                  'markeredgecolor', 'w', ...
-                  'linewidth', 0.5, ...
-                  'markersize', 4);
+                  'markeredgecolor', 'w', 'linewidth', 0.5, 'markersize', 4);
             end
             plot([0 pi], [0 pi], '-', ...
                'color', pantone.AuroraRed, 'linewidth', 0.5);
@@ -266,6 +275,18 @@ for analysisIdx = 1:numel(analysisList)
 
             fprintf('Loading pre-stored samples from file %s\n', fileName);
             load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+
+             % just keep converged chains
+            switch modelIdx
+               case 1 % perceptual
+                  [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
+               case 2 % similarity
+                  [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
+            end
+            fields = fieldnames(chains);
+            for i = 1:numel(fields)
+               chains.(fields{i}) = chains.(fields{i})(:, keepChains);
+            end
 
             mu = codatable(chains, 'mu', @mean);
             muTruth = ds.stimuli;
@@ -311,125 +332,7 @@ for analysisIdx = 1:numel(analysisList)
             end
          end
 
-      case 'alternativeSimilarity'
-
-         fileName = 'similarityComparisonAlternative_tomicBays_jags';
-         fontSize = 20;
-         CIbounds = [2.5 97.5];
-         thresh = 2;
-
-         fprintf('Loading pre-stored samples from file %s\n', fileName);
-         load(sprintf('storage/%s', fileName), 'chains');
-
-         % just convergent chains
-         [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
-         fields = fieldnames(chains);
-         for i = 1:numel(fields)
-            chains.(fields{i}) = chains.(fields{i})(:, keepChains);
-         end
-
-         mu = codatable(chains, 'mu', @mean);
-         for idx = 1:ds.nStimuli
-            muBounds(idx, :) = prctile(chains.(sprintf('mu_%d', idx))(:), CIbounds);
-         end
-         muTruth = ds.stimuli;
-
-         F = figure; clf; hold on;
-         setFigure(F, [0.2 0.2 0.6 0.5], '');
-
-         subplot(1, 2, 1); cla; hold on;
-         set(gca, ...
-            'xlim'       , [0 pi]    , ...
-            'xtick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-            'xticklabelrot', 0, ...
-            'xticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-            'ylim'       , [0 pi]    , ...
-            'ytick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-            'yticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-            'ticklabelinterpreter', 'latex', ...
-            'box'        , 'off'     , ...
-            'tickdir'    , 'out'     , ...
-            'layer'      , 'top'     , ...
-            'ticklength' , [0.02 0]  , ...
-            'layer'      , 'top'     , ...
-            'clipping'   , 'off'     , ...
-            'fontsize'   , fontSize  );
-         axis square;
-         ylabel('Psychological', 'fontsize', fontSize);
-         xlabel('Physical', 'fontsize', fontSize);
-         text(-1, 3.5, lower(char(64+1)), 'fontsize', fontSize, 'fontweight', 'bold');
-         moveAxis(gca, [1 1 0.95 0.95], [0 0.025 0 0]);
-         Raxes(gca, 0.02, 0.01);
-
-         for i = pi/4:pi/4:3*pi/4
-            plot([i i], [0 pi], '-', ...
-               'color', pantone.GlacierGray);
-            plot([0 pi], [i i], '-', ...
-               'color', pantone.GlacierGray);
-         end
-
-         for idx = 1:ds.nStimuli
-            plot( muTruth(idx)*ones(1, 2), muBounds(idx, :), '-', ...
-               'color', pantone.ClassicBlue, ...
-               'linewidth', 1);
-            plot(muTruth(idx), mu(idx),  'o', ...
-               'markerfacecolor', pantone.ClassicBlue, ...
-               'markeredgecolor', 'w', ...
-               'linewidth', 0.5, ...
-               'markersize', 4);
-         end
-         plot([0 pi], [0 pi], '-', ...
-            'color', pantone.AuroraRed, 'linewidth', 0.5);
-
-         m = nan(ds.nStimuli, ds.nStimuli);
-         for matchA = 1:ds.nStimuli
-            for matchB = 1:ds.nStimuli
-               match = find(abs(ds.aIdx - matchA) <= thresh & abs(ds.bIdx - matchB) <= thresh);
-               m(matchA, matchB) = (sum(ds.response(match))+1)/(length(match)+2);
-            end
-         end
-
-         subplot(1, 2, 2); cla; hold on;
-         set(gca, ...
-            'xlim'       , [0 pi]    , ...
-            'xtick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-            'xticklabelrot', 0, ...
-            'xticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-            'ylim'       , [0 pi]    , ...
-            'ytick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-            'yticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-            'ticklabelinterpreter', 'latex', ...
-            'box'        , 'off'     , ...
-            'tickdir'    , 'out'     , ...
-            'layer'      , 'top'     , ...
-            'ticklength' , [0.02 0]  , ...
-            'layer'      , 'top'     , ...
-            'clipping'   , 'off'     , ...
-            'fontsize'   , fontSize  );
-         axis square;
-         xlabel('Stimulus A', 'fontsize', fontSize);
-         ylabel('Stimulus B', 'fontsize', fontSize);
-         text(-1, 3.5, lower(char(64+2)), 'fontsize', fontSize, 'fontweight', 'bold');
-         moveAxis(gca, [1 1 0.95 0.95], [0 0.025 0 0]);
-         Raxes(gca, 0.01, 0.01);
-
-         for i = 1:ds.nStimuli
-            for j = 1:ds.nStimuli
-               if ~isnan(m(i, j))
-                  if i <= j
-                     clr = m(i, j)*[1 1 1] + (1-m(i, j))*[0 0 0];
-                     % clr = exp(-1/(1+(m(i, j)-1/2)/10))*pantone.Custard + (1-m(i, j))*pantone.ClassicBlue;
-                  else
-                     clr = [1 1 1];
-                  end
-                  plot((i-1)/72*pi, (j-1)/72*pi, 's', ...
-                     'markerfacecolor', clr, ...
-                     'markeredgecolor', 'w', ...
-                     'markersize', 10);
-               end
-            end
-         end
-
+     
       case 'clusterSavageDickey'
 
          fileName = '../clusterRepresentation/storage/clusterRepresentation_tomicBays_jags';
@@ -515,7 +418,7 @@ for analysisIdx = 1:numel(analysisList)
 
       case 'statisticalSummaries'
 
-         fid = fopen('statisticalSummaries.txt', 'w');
+         fid = fopen('results/statisticalSummaries.txt', 'w');
 
          printFigures = false;
 
@@ -537,7 +440,7 @@ for analysisIdx = 1:numel(analysisList)
          for i = 1:numel(fields)
             chains.(fields{i}) = chains.(fields{i})(:, keepChains);
          end
-         fprintf(fid, '\n----------\nPerceptual Reconstruction\n\n');
+         fprintf(fid, '\n----------\nPerceptual Reproduction\n\n');
 
          sigma = codatable(chains, 'sigma', @mean);
          bounds = prctile(chains.sigma(:), CIbounds);
@@ -553,7 +456,7 @@ for analysisIdx = 1:numel(analysisList)
          for i = 1:numel(fields)
             chains.(fields{i}) = chains.(fields{i})(:, keepChains);
          end
-         fprintf(fid, '\n----------\nMemory Reconstruction\n\n');
+         fprintf(fid, '\n----------\nMemory Reproduction\n\n');
 
          % posterior summary for sigmas
          sigma3 = codatable(chains, 'sigma_1', @mean);
@@ -724,9 +627,9 @@ for analysisIdx = 1:numel(analysisList)
 
       case 'descriptiveAdequacyPerceptual'
 
-         if exist('descriptiveAdequacyPerceptualPreSave.mat', 'file')
+         if exist('storage/descriptiveAdequacyPerceptualPreSave.mat', 'file')
 
-            load descriptiveAdequacyPerceptualPreSave count binsC
+            load('storage/descriptiveAdequacyPerceptualPreSave', 'credInterval', 'mn', 'binsC');
 
          else
 
@@ -764,7 +667,7 @@ for analysisIdx = 1:numel(analysisList)
                credInterval(i, :) = prctile(vals, CI);
             end
 
-            save descriptiveAdequacyPerceptualPreSave mn credInterval binsC
+            save('storage/descriptiveAdequacyPerceptualPreSave', 'mn', 'credInterval', 'binsC');
 
          end
 
@@ -812,9 +715,9 @@ for analysisIdx = 1:numel(analysisList)
 
       case 'descriptiveAdequacyMemory'
 
-         if exist('descriptiveAdequacyMemoryPreSave.mat', 'file')
+         if exist('storage/descriptiveAdequacyMemoryPreSave.mat', 'file')
 
-            load descriptiveAdequacyMemoryPreSave count binsC
+            load('storage/descriptiveAdequacyMemoryPreSave', 'credInterval', 'binsC');
 
          else
 
@@ -852,7 +755,7 @@ for analysisIdx = 1:numel(analysisList)
                credInterval(i, :) = prctile(vals, CI);
             end
 
-            save descriptiveAdequacyMemoryPreSave mn credInterval binsC
+            save('storage/descriptiveAdequacyMemoryPreSave', 'credInterval', 'binsC');
          end
 
          fontSize = 18;
@@ -898,9 +801,9 @@ for analysisIdx = 1:numel(analysisList)
 
           case 'descriptiveAdequacyMemoryNoSwap'
 
-         if exist('descriptiveAdequacyMemoryNoSwapPreSave.mat', 'file')
+         if exist('storage/descriptiveAdequacyMemoryNoSwapPreSave.mat', 'file')
 
-            load descriptiveAdequacyMemoryNoSwapPreSave count binsC
+            load('storage/descriptiveAdequacyMemoryNoSwapPreSave', 'credInterval', 'binsC');
 
          else
 
@@ -938,7 +841,7 @@ for analysisIdx = 1:numel(analysisList)
                credInterval(i, :) = prctile(vals, CI);
             end
 
-            save descriptiveAdequacyMemoryNoSwapPreSave mn credInterval binsC
+             save('storage/descriptiveAdequacyMemoryNoSwapPreSave', 'credInterval', 'binsC');
          end
 
          fontSize = 18;
@@ -990,13 +893,13 @@ for analysisIdx = 1:numel(analysisList)
          fprintf('Loading pre-stored samples from file %s\n', fileName);
          load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
 
-         if exist('descriptiveAdequacySimilarityPreSave.mat', 'file')
+         if exist('storage/descriptiveAdequacySimilarityPreSave.mat', 'file')
 
-            load descriptiveAdequacySimilarityPreSave pC
+            load('storage/descriptiveAdequacySimilarityPreSave', 'pC');
 
          else
 
-            nSamples = 2000*11;
+            nSamples = 1000*8;
 
             % need to sample posterior predictive because of censoring
             % base it on just posterior means of mu and sigma
@@ -1018,11 +921,6 @@ for analysisIdx = 1:numel(analysisList)
                   xC = randn*sigma(ceil(rand*nSamples)) + mu(ds.cIdx(i), ceil(rand*nSamples));
                   xD = randn*sigma(ceil(rand*nSamples)) + mu(ds.dIdx(i), ceil(rand*nSamples));
 
-                  %  xA = randn*sigmaMean + muMean(ds.aIdx(i));
-                  % xB = randn*sigmaMean + muMean(ds.bIdx(i));
-                  % xC = randn*sigmaMean + muMean(ds.cIdx(i));
-                  % xD = randn*sigmaMean + muMean(ds.dIdx(i));
-
                   dAB = min(abs(xA-xB), pi-abs(xA-xB));
                   dCD = min(abs(xC-xD), pi-abs(xC-xD));
 
@@ -1036,7 +934,7 @@ for analysisIdx = 1:numel(analysisList)
                %mean(pC(1:i))
             end
 
-            save descriptiveAdequacySimilarityPreSave pC
+            save('storage/descriptiveAdequacySimilarityPreSave', 'pC');
          end
 
          fontSize = 18;
@@ -1074,6 +972,40 @@ for analysisIdx = 1:numel(analysisList)
          fprintf('\n median agreement is %d\n', ...
             round(100*median(pC)));
 
+      case 'swapExamples'
+
+         fileName = '../memoryReproduction/storage/memoryReproduction_tomicBays_jags';
+         fprintf('Loading pre-stored samples from file %s\n', fileName);
+         load(sprintf('%s', fileName), 'chains');
+
+         [keepChains, ~] = findKeepChains(chains.sigma_1, 2, 1.1);
+         keepChains = setdiff(keepChains, 8);
+         fields = fieldnames(chains);
+         for i = 1:numel(fields)
+            chains.(fields{i}) = chains.(fields{i})(:, keepChains);
+         end
+
+         [T, picked] = buildSwapExampleTable(dm, chains, pi);
+         if ~isfolder('figures')
+            mkdir('figures');
+         end
+         writetable(T, 'figures/swapExampleCandidates.csv');
+         writetable(picked, 'figures/swapExamplePicked.csv');
+
+         fprintf('Visually clear candidates: %d (%d setSize=3, %d setSize=6)\n', ...
+            height(T), sum(T.setSize == 3), sum(T.setSize == 6));
+         fprintf('Picked %d trials (%d setSize=3, %d setSize=6)\n', ...
+            height(picked), sum(picked.setSize == 3), sum(picked.setSize == 6));
+         if ~isempty(picked)
+            disp(picked(:, {'trial', 'setSize', 'pBestFoil', 'bestFoilXi', ...
+               'dInferredFoil', 'foilMargin', 'participant'}));
+            F = plotSwapExamples(picked, dm, pantone, pi);
+            figure(F);
+         else
+            warning('swapExamples:NoTrials', ...
+               'No swap-example trials passed filters; CSV tables written, figure skipped.');
+         end
+
    end
 
    % print
@@ -1085,4 +1017,278 @@ for analysisIdx = 1:numel(analysisList)
       print(sprintf('figures/%s.eps', analysisName), '-depsc');
    end
 
+end
+
+function [muMean, bounds] = summarizeHalfCircle(vals, CI)
+vals = vals(:);
+phi = mod(2 * vals, 2 * pi);
+phi0 = atan2(mean(sin(phi)), mean(cos(phi)));
+if phi0 < 0
+   phi0 = phi0 + 2 * pi;
+end
+rel = angle(exp(1i * (phi - phi0)));
+relBounds = prctile(rel, CI);
+muMean = mod(phi0 / 2, pi);
+bounds = mod(muMean + relBounds / 2, pi);
+end
+
+function [T, picked] = buildSwapExampleTable(dm, chains, piVal)
+angDist = @(a, b) min(abs(a - b), piVal - abs(a - b));
+nTrials = dm.nTrials;
+[~, ~, setSizeIdx] = unique(dm.setSize, 'stable');
+
+rows = struct( ...
+   'trial', {}, 'participant', {}, 'setSize', {}, ...
+   'pSwap', {}, 'pTarget', {}, 'pBestFoil', {}, 'bestXi', {}, 'bestFoilXi', {}, ...
+   'visualFoil', {}, 'visualMatch', {}, ...
+   'resp', {}, 'target', {}, 'bestFoil', {}, 'bestFoilIdx', {}, ...
+   'dTarget', {}, 'dBestFoil', {}, 'dInferredFoil', {}, ...
+   'foilMargin', {}, 'score', {});
+
+for t = 1:nTrials
+   ss = setSizeIdx(t);
+   xiSamples = chains.(sprintf('xi_%d_%d', t, ss))(:);
+   pTarget = mean(xiSamples == 1);
+   pSwap = 1 - pTarget;
+   nCat = dm.setSize(t);
+   counts = histcounts(xiSamples, 0.5:(nCat + 0.5));
+   pCat = counts / sum(counts);
+   [~, bestXi] = max(pCat);
+   [pBestFoil, foilSlot] = max(pCat(2:end));
+   bestFoilXi = foilSlot + 1;
+   inferredFoilNum = bestFoilXi - 1;
+
+   resp = mod(dm.response(t), piVal);
+   targ = mod(dm.target(t), piVal);
+   nFoils = dm.setSize(t) - 1;
+   foilsRaw = mod(dm.nontarget(t, 1:nFoils), piVal);
+   foilOrder = sortFoilsByTargetDistance(targ, foilsRaw, piVal);
+   numberedFoils = foilsRaw(foilOrder);
+
+   dT = angDist(resp, targ);
+   dToNumbered = arrayfun(@(f) angDist(resp, numberedFoils(f)), 1:nFoils);
+   [dBestFoil, visualFoil] = min(dToNumbered);
+   foilMargin = dT - dBestFoil;
+   dInferredFoil = dToNumbered(inferredFoilNum);
+   visualMatch = visualFoil == inferredFoilNum;
+
+   if dm.setSize(t) == 3
+      minMargin = 0.8;
+      maxDInferred = 0.35;
+      minPFoil = 0.33;
+   elseif bestFoilXi ~= 6
+      minMargin = 0.85;
+      maxDInferred = 0.05;
+      minPFoil = 0.20;
+   else
+      minMargin = 1.0;
+      maxDInferred = 0.30;
+      minPFoil = 0.35;
+   end
+
+   if foilMargin < minMargin || dInferredFoil > maxDInferred || pBestFoil < minPFoil || ~visualMatch
+      continue;
+   end
+
+   score = pBestFoil * foilMargin / (dInferredFoil + 0.05);
+   rows(end+1) = struct( ...
+      'trial', t, ...
+      'participant', dm.participant(t), ...
+      'setSize', dm.setSize(t), ...
+      'pSwap', pSwap, ...
+      'pTarget', pTarget, ...
+      'pBestFoil', pBestFoil, ...
+      'bestXi', bestXi, ...
+      'bestFoilXi', bestFoilXi, ...
+      'visualFoil', visualFoil, ...
+      'visualMatch', visualMatch, ...
+      'resp', resp, ...
+      'target', targ, ...
+      'bestFoil', numberedFoils(visualFoil), ...
+      'bestFoilIdx', foilOrder(visualFoil), ...
+      'dTarget', dT, ...
+      'dBestFoil', dBestFoil, ...
+      'dInferredFoil', dInferredFoil, ...
+      'foilMargin', foilMargin, ...
+      'score', score); %#ok<AGROW>
+end
+
+T = struct2table(rows);
+T = sortrows(T, 'score', 'descend');
+
+nPick = 6;
+T3 = T(T.setSize == 3, :);
+T6 = T(T.setSize == 6, :);
+pick3 = pickDiverseSwapExamples(T3, nPick);
+pick6 = pickSixItemSwapExamples(T6, nPick);
+picked = [pick3; pick6];
+picked = sortrows(picked, {'setSize', 'score'}, {'ascend', 'descend'});
+end
+
+function sub = pickDiverseSwapExamples(T, nPick)
+if height(T) < nPick
+   sub = T;
+   return;
+end
+sub = T(1, :);
+usedP = sub.participant(1);
+rem = T(2:end, :);
+while height(sub) < nPick && ~isempty(rem)
+   best = 1;
+   bestScore = -inf;
+   for i = 1:height(rem)
+      p = rem.participant(i);
+      bonus = 0.15 * ~ismember(p, usedP);
+      s = rem.score(i) * (1 + bonus);
+      if s > bestScore
+         bestScore = s;
+         best = i;
+      end
+   end
+   sub = [sub; rem(best, :)]; %#ok<AGROW>
+   usedP(end+1) = rem.participant(best);
+   rem(best, :) = [];
+end
+end
+
+function pick6 = pickSixItemSwapExamples(T6, nPick)
+Tother = T6(T6.bestFoilXi ~= 6, :);
+Tother = sortrows(Tother, {'dInferredFoil', 'foilMargin'}, {'ascend', 'descend'});
+Tfive = sortrows(T6(T6.bestFoilXi == 6, :), 'score', 'descend');
+
+if isempty(Tother)
+   pick6 = pickDiverseSwapExamples(Tfive, nPick);
+   return;
+end
+
+pickOther = pickDiverseSwapExamples(Tother, 1);
+usedP = pickOther.participant;
+TfiveRem = Tfive(~ismember(Tfive.participant, usedP), :);
+pickFive = pickDiverseSwapExamples(TfiveRem, nPick - 1);
+pick6 = [pickOther; pickFive];
+end
+
+function fig = plotSwapExamples(picked, dm, pantone, piVal)
+n = height(picked);
+if n < 1
+   error('plotSwapExamples:EmptyTable', 'picked must contain at least one trial.');
+end
+nCols = 4;
+nRows = ceil(n / nCols);
+fig = figure('Color', 'w', 'Position', [50 50 820 560], 'Units', 'pixels');
+tlo = tiledlayout(nRows, nCols, 'TileSpacing', 'none', 'Padding', 'none');
+
+xLim = [-1.12 1.12];
+yLim = [-0.02 1.06];
+rayLen = 0.94;
+labelFs = 11;
+legendFs = 12;
+legendHandles = gobjects(3, 1);
+
+for k = 1:n
+   tr = picked.trial(k);
+   ax = nexttile(tlo);
+   hold(ax, 'on');
+
+   targ = mod(dm.target(tr), piVal);
+   nFoils = dm.setSize(tr) - 1;
+   foilsRaw = mod(dm.nontarget(tr, 1:nFoils), piVal);
+   resp = mod(dm.response(tr), piVal);
+   foilOrder = sortFoilsByTargetDistance(targ, foilsRaw, piVal);
+   inferredFoil = picked.bestFoilXi(k) - 1;
+
+   setupSemicircleAxes(ax, xLim, yLim, pantone);
+   drawSemicircleRay(ax, targ, pantone.ClassicBlue, '-', 2.8, rayLen, 0.45);
+   drawSemicircleRay(ax, resp, pantone.AuroraRed, '-', 2.8, rayLen, 0.45);
+   hFoil = gobjects(1);
+   for fIdx = 1:nFoils
+      ang = foilsRaw(foilOrder(fIdx));
+      isInferred = fIdx == inferredFoil;
+      h = drawSemicircleRay(ax, ang, [0 0 0], '--', 1.4, rayLen * 0.92);
+      if fIdx == 1
+         hFoil = h;
+      end
+      labelFoilNumber(ax, ang, fIdx, rayLen, isInferred, labelFs);
+   end
+
+   if k == 1
+      legendHandles(1) = plot(ax, NaN, NaN, '-', 'Color', pantone.ClassicBlue, 'LineWidth', 2.8);
+      legendHandles(2) = hFoil;
+      legendHandles(3) = plot(ax, NaN, NaN, '-', 'Color', pantone.AuroraRed, 'LineWidth', 2.8);
+   end
+end
+
+for k = (n + 1):(nRows * nCols)
+   nexttile(tlo);
+   axis off;
+end
+
+tlo.InnerPosition(1) = 0.02;
+tlo.InnerPosition(3) = 0.96;
+tlo.InnerPosition(2) = 0.04;
+tlo.InnerPosition(4) = 0.90;
+
+lgd = legend(legendHandles, {'Target', 'Foil', 'Response'}, ...
+   'Orientation', 'horizontal', 'Box', 'off', 'FontSize', legendFs);
+lgd.Units = 'normalized';
+lgd.Position = [0.24 0.945 0.52 0.045];
+end
+
+function foilOrder = sortFoilsByTargetDistance(targ, foils, piVal)
+dists = arrayfun(@(f) min(abs(targ - f), piVal - abs(targ - f)), foils);
+[~, foilOrder] = sort(dists, 'ascend');
+end
+
+function labelFoilNumber(ax, angle, foilNum, rayLen, circleInferred, fontSize)
+labelR = rayLen * 1.07;
+x = labelR * cos(angle);
+y = labelR * sin(angle);
+text(ax, x, y, sprintf('%d', foilNum), ...
+   'HorizontalAlignment', 'center', ...
+   'VerticalAlignment', 'middle', ...
+   'FontSize', fontSize, ...
+   'Color', [0 0 0], ...
+   'Clipping', 'off');
+if circleInferred
+   r = 0.050 + 0.0035 * fontSize;
+   pos = [x - r, y - r, 2 * r, 2 * r];
+   rectangle(ax, 'Position', pos, ...
+      'Curvature', [1 1], ...
+      'EdgeColor', [0 0 0], ...
+      'LineWidth', 1.1, ...
+      'FaceColor', 'none');
+end
+end
+
+function setupSemicircleAxes(ax, xLim, yLim, pantone)
+set(ax, ...
+   'xlim', xLim, ...
+   'ylim', yLim, ...
+   'xtick', [], ...
+   'ytick', [], ...
+   'box', 'off', ...
+   'clipping', 'off', ...
+   'layer', 'top');
+axis(ax, 'equal');
+axis(ax, 'off');
+
+th = linspace(0, pi, 120);
+plot(ax, cos(th), sin(th), '-', 'Color', pantone.GlacierGray, 'LineWidth', 0.9);
+plot(ax, xLim, [0 0], '-', 'Color', pantone.GlacierGray, 'LineWidth', 0.9);
+plot(ax, 0, 0, 'o', ...
+   'markerfacecolor', pantone.GlacierGray, ...
+   'markeredgecolor', 'w', ...
+   'markersize', 2.5);
+end
+
+function h = drawSemicircleRay(ax, angle, col, ls, lw, len, alpha)
+if nargin < 7
+   alpha = 1;
+end
+angle = mod(angle, pi);
+if numel(col) == 3
+   col = [col, alpha];
+end
+h = plot(ax, [0 len * cos(angle)], [0 len * sin(angle)], ...
+   'Color', col, 'LineStyle', ls, 'LineWidth', lw);
 end
