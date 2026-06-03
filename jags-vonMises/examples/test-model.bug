@@ -1,0 +1,7 @@
+model {
+  for (i in 1:N) {
+    theta[i] ~ dvonmises(mu, kappa)
+  }
+  mu <- 1.0
+  kappa <- 2.0
+}

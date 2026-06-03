@@ -75,7 +75,13 @@ These are separate generative models, not reparameterizations of the wrap-copy m
 - `similarityComparison/similarityComparison_vonMises.m`
 - `commonRepresentation/commonRepresentation_vonMises.m`
 
-Build the vendored module in `jags-vonMises/` (from [yeagle/jags-vonmises](https://github.com/yeagle/jags-vonmises)), set `JAGS_LIBS` to that directory, and pass `'modules', {'vonmises'}` through `callbayes` (see comments in each von Mises script).
+The repository includes the modified von Mises JAGS module under `jags-vonMises/` (fork of [yeagle/jags-vonmises](https://github.com/yeagle/jags-vonmises); see that folder’s README). After clone:
+
+```bash
+cd jags-vonMises && make
+```
+
+Then set `JAGS_LIBS` to `jags-vonMises/` (or `make install` system-wide) and pass `'modules', {'vonmises'}` through `callbayes` (see comments in each von Mises driver).
 
 **Sampling limitations.** Von Mises directions in JAGS can suffer from poor MCMC exploration when the posterior wraps the circle—scalar samplers treat `[0, 2π)` as an interval with endpoints, so chains may fail to move between modes near 0 and `2π`. That issue is discussed for the yeagle module in [this Cross Validated thread](https://stats.stackexchange.com/questions/459521/jags-circular-distribution-sampling-issues). In our hands this limits reliable inference most clearly for **similarity comparison**, where each trial conditions on four mental samples under **censoring** (`dinterval`), multiplying the effect of poor circular mixing. The wrap-copy Gaussian models in this repository are the primary fits used in the paper; von Mises drivers are included as an alternative specification, not as a drop-in replacement with equal performance.
 

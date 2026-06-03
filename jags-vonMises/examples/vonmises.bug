@@ -1,0 +1,16 @@
+# Example: von Mises observations with unknown mean and concentration.
+#
+# Load with:
+#   load vonmises
+#
+# Or in R/rjags:
+#   jags.model(..., modules = "vonmises")
+
+model {
+  for (i in 1:N) {
+    theta[i] ~ dvonmises(mu, kappa)
+  }
+
+  mu ~ dunif(0, 6.283185307179586)
+  kappa ~ dgamma(0.1, 0.1)
+}

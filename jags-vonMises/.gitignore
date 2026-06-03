@@ -1,0 +1,6 @@
+# Build artifacts (run `make` in this directory after clone)
+*.so
+libvonmises.so
+local/
+modules-4/
+test-modules/
