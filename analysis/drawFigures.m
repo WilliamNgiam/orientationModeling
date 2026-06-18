@@ -8,14 +8,14 @@ printFigures = true;
 analysisList = {...
    % 'threeScatter'; ...
    % 'fourScatter'; ...
-   % 'twoRepresentations'; ...
-    %'clusterSavageDickey'; ...
+   'twoRepresentations'; ...
+   %'clusterSavageDickey'; ...
    % 'statisticalSummaries'; ...
    %'descriptiveAdequacyPerceptual'; ...
    % 'descriptiveAdequacyMemory'; ...
-    % 'descriptiveAdequacyMemoryNoSwap'; ...
-  % 'descriptiveAdequacySimilarity'; ...
-    'swapExamples'; ...
+   % 'descriptiveAdequacyMemoryNoSwap'; ...
+   % 'descriptiveAdequacySimilarity'; ...
+   % 'swapExamples'; ...
    };
 
 % load data
@@ -259,8 +259,9 @@ for analysisIdx = 1:numel(analysisList)
 
          % relative directory structure in github repository
          fileList = {...
+            '../perceptualReproduction/storage/perceptualReproduction_tomicBays_jags'; ...
             '../similarityComparison/storage/similarityComparison_tomicBays_jags'; ...
-            '../perceptualReproduction/storage/perceptualReproduction_tomicBays_jags'};
+            };
 
          fontSize = 20;
 
@@ -276,7 +277,7 @@ for analysisIdx = 1:numel(analysisList)
             fprintf('Loading pre-stored samples from file %s\n', fileName);
             load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
 
-             % just keep converged chains
+            % just keep converged chains
             switch modelIdx
                case 1 % perceptual
                   [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
@@ -332,7 +333,7 @@ for analysisIdx = 1:numel(analysisList)
             end
          end
 
-     
+
       case 'clusterSavageDickey'
 
          fileName = '../clusterRepresentation/storage/clusterRepresentation_tomicBays_jags';
@@ -799,7 +800,7 @@ for analysisIdx = 1:numel(analysisList)
                'markeredgecolor', pantone.ClassicBlue);
          end
 
-          case 'descriptiveAdequacyMemoryNoSwap'
+      case 'descriptiveAdequacyMemoryNoSwap'
 
          if exist('storage/descriptiveAdequacyMemoryNoSwapPreSave.mat', 'file')
 
@@ -841,7 +842,7 @@ for analysisIdx = 1:numel(analysisList)
                credInterval(i, :) = prctile(vals, CI);
             end
 
-             save('storage/descriptiveAdequacyMemoryNoSwapPreSave', 'credInterval', 'binsC');
+            save('storage/descriptiveAdequacyMemoryNoSwapPreSave', 'credInterval', 'binsC');
          end
 
          fontSize = 18;
@@ -971,6 +972,8 @@ for analysisIdx = 1:numel(analysisList)
             mean(pC), prctile(pC, [2.5 97.5]));
          fprintf('\n median agreement is %d\n', ...
             round(100*median(pC)));
+
+         fprintf('\n Forced choice agreement is %1.2f\n', mean(pC >= 0.5));
 
       case 'swapExamples'
 
