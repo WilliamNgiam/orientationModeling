@@ -1,7 +1,7 @@
 # Code accompanying Ngiam & Lee (2026)
 
 **Ngiam, W. X. Q., & Lee, M. D.** (2026). *Model-based evidence for task-dependent representations in psychological similarity and working memory.*  
-Preprint: [https://osf.io/preprints/psyarxiv/fm9vz_v2](https://osf.io/preprints/psyarxiv/fm9vz_v2)
+Preprint: [https://osf.io/preprints/psyarxiv/fm9vz_v2](https://osf.io/preprints/psyarxiv/fm9vz_v3)
 
 This repository contains the MATLAB and JAGS code used to fit and compare generative psychological models of orientation representations across perceptual reproduction, visual working memory, and similarity comparison. The analyses test whether a single shared psychological representation can account for all three tasks, or whether memory and similarity require task-specific distortions relative to perception.
 
@@ -164,7 +164,7 @@ Outputs go to `analysis/figures/` (and `analysis/results/` for summaries). Most 
 
 If you use this code, please cite:
 
-> Ngiam, W. X. Q., & Lee, M. D. (2026). Model-based evidence for task-dependent representations in psychological similarity and working memory. *PsyArXiv.* https://osf.io/preprints/psyarxiv/fm9vz_v2
+> Ngiam, W. X. Q., & Lee, M. D. (2026). Model-based evidence for task-dependent representations in psychological similarity and working memory. *PsyArXiv.* https://osf.io/preprints/psyarxiv/fm9vz_v3
 
 The empirical dataset should also be cited:
 
