@@ -2,12 +2,6 @@
 %
 % DATA: tomicBays2024 (parse_tomicBays2024).
 %
-% Similarity ds is unchanged across parses → similarityComparison storage
-% tagged tomicBays2024. Common/cluster paper products use main storage tags
-% (no Weekend in filenames).
-% Plain cluster SD: DIC Mode A (~0, 1.5) via loadModeAClusterChains.
-% Entrop cluster SD: keep product; zoom axes [0,1].
-% SI descriptiveAdequacy* are commented (uncomment to regenerate).
 
 clear;
 close all;
@@ -29,6 +23,8 @@ analysisList = {...
    % 'descriptiveAdequacyMemoryNoSwap'; ...  % needs plain NoSwap yP mat
    % 'descriptiveAdequacySimilarity'; ...
    };
+
+
 
 
 
@@ -370,7 +366,7 @@ for analysisIdx = 1:numel(analysisList)
          bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
          fPrior = mvksdensity(omega3fullPrior, omega3critical, 'Bandwidth', bw);
 
-         logBF3 = log(fPosterior) - log(fPrior);
+         logBF3 = densityLogBF(fPosterior, fPrior);
 
          n = size(omega6full, 1);
          d = size(omega6full, 2);
@@ -384,10 +380,11 @@ for analysisIdx = 1:numel(analysisList)
          bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
          fPrior = mvksdensity(omega6fullPrior, omega6critical, 'Bandwidth', bw);
 
-         logBF6 = log(fPosterior) - log(fPrior);
+         logBF6 = densityLogBF(fPosterior, fPrior);
 
-         fprintf(fid, 'Via multivariate kernel density estimation, the log BF for the null is %.0f for 3 targets and %.0f for 6 targets\n', ...
-            logBF3, logBF6);
+         fprintf(fid, ['Via multivariate kernel density estimation, the log BF ', ...
+            'for the null is %s for 3 targets and %s for 6 targets\n'], ...
+            formatLogBF(logBF3), formatLogBF(logBF6));
 
          % SIMILARITY
          fileName = fileList{3};
@@ -404,7 +401,7 @@ for analysisIdx = 1:numel(analysisList)
          bounds = prctile(chains.sigma(:), CIbounds);
          fprintf(fid, 'Posterior mean of sigma is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', sigma, bounds);
 
-         % CLUSTER (DIC Mode A; prefer large merged pool first)
+         % CLUSTER (DIC Mode A; prefer large pool first)
          scale = 4;
 
          fprintf('\n----------\n');
@@ -412,63 +409,27 @@ for analysisIdx = 1:numel(analysisList)
             '../clusterRepresentation/storage/clusterRepresentation_tomicBays2024_jags', ...
             fileList{4}});
          fprintf(fid, '\n----------\nCluster Bayes Factor (Mode A / DIC-preferred)\n\n');
+         writeClusterGammaSummaries(fid, chains, CIbounds);
+         writeClusterSavageDickeyBFs(fid, chains, scale);
 
-         Xposterior = [chains.gammaPS(:) chains.gammaPM(:)];
-         Xprior = [chains.gammaPrior(:) chains.gammaPrior(randperm(length(chains.gammaPrior(:))))'];
-         Xcrit = [0 0];
-         n = size(Xposterior, 1);
-         d = size(Xposterior, 2);
-         sigma = std(Xposterior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPosterior = ksdensity(Xposterior, Xcrit, 'Bandwidth', bw*scale);
-
-         n = size(Xprior, 1);
-         d = size(Xprior, 2);
-         sigma = std(Xprior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPrior = ksdensity(Xprior, Xcrit, 'Bandwidth', bw*scale);
-
-         logBF = log(fPosterior) - log(fPrior);
-         fprintf(fid, 'Via kernel density estimation (with bandwidth boosted by factor of %d to avoid -inf), the log BF for the joint null is %.0f\n', ...
-            scale, logBF);
-
-         Xposterior = chains.gammaPM(:);
-         Xprior = chains.gammaPrior(:);
-         Xcrit = 0;
-         n = size(Xposterior, 1);
-         d = size(Xposterior, 2);
-         sigma = std(Xposterior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPosterior = ksdensity(Xposterior, Xcrit, 'Bandwidth', bw*scale);
-
-         n = size(Xprior, 1);
-         d = size(Xprior, 2);
-         sigma = std(Xprior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPrior = ksdensity(Xprior, Xcrit, 'Bandwidth', bw*scale);
-
-         logBF = log(fPosterior) - log(fPrior);
-         fprintf(fid, 'Via kernel density estimation (with bandwidth boosted by factor of %d to avoid -inf, the log BF for the perceptual-memory null is %.0f\n', ...
-            scale, logBF);
-
-         Xposterior = chains.gammaPS(:);
-         Xprior = chains.gammaPrior(:);
-         Xcrit = 0;
-         n = size(Xposterior, 1);
-         d = size(Xposterior, 2);
-         sigma = std(Xposterior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPosterior = ksdensity(Xposterior, Xcrit, 'Bandwidth', bw*scale);
-
-         n = size(Xprior, 1);
-         d = size(Xprior, 2);
-         sigma = std(Xprior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPrior = ksdensity(Xprior, Xcrit, 'Bandwidth', bw*scale);
-
-         logBF = log(fPosterior) - log(fPrior);
-         fprintf(fid, 'Via kernel density estimation (with bandwidth boosted by factor of %d to avoid -inf, the log BF for the perceptual-similarity null is %.0f\n', ...
-            scale, logBF);
+         % CLUSTER + ENTROPIFICATION (paper keep)
+         fprintf('\n----------\n');
+         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropification_tomicBays2024_jags';
+         fprintf('Loading keep from %s\n', fileName);
+         S = load(fileName, 'chains', 'keepChains');
+         chains = S.chains;
+         if isfield(S, 'keepChains')
+            fprintf('  keep=%s nCh=%d\n', mat2str(S.keepChains), size(chains.gammaPM, 2));
+         end
+         fprintf(fid, '\n----------\nCluster Entropification (paper keep)\n\n');
+         writeClusterGammaSummaries(fid, chains, CIbounds);
+         if isfield(chains, 'w')
+            wMean = mean(chains.w(:));
+            wBounds = prctile(chains.w(:), CIbounds);
+            fprintf(fid, 'Posterior mean of w is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', ...
+               wMean, wBounds);
+         end
+         writeClusterSavageDickeyBFs(fid, chains, scale);
 
          fclose(fid);
 
@@ -950,6 +911,87 @@ for analysisIdx = 1:numel(analysisList)
       print(sprintf('figures/%s.eps', analysisName), '-depsc');
    end
 
+end
+
+function writeClusterGammaSummaries(fid, chains, CIbounds)
+gPM = mean(chains.gammaPM(:));
+gPS = mean(chains.gammaPS(:));
+bPM = prctile(chains.gammaPM(:), CIbounds);
+bPS = prctile(chains.gammaPS(:), CIbounds);
+fprintf(fid, 'Posterior mean of gamma_pm is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', ...
+   gPM, bPM);
+fprintf(fid, 'Posterior mean of gamma_ps is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', ...
+   gPS, bPS);
+end
+
+function writeClusterSavageDickeyBFs(fid, chains, scale)
+%WRITECLUSTERSAVAGEDICKEYBFS Joint and marginal nulls at gamma = 0.
+Xposterior = [chains.gammaPS(:) chains.gammaPM(:)];
+Xprior = [chains.gammaPrior(:) chains.gammaPrior(randperm(length(chains.gammaPrior(:))))'];
+logBF = kdeLogBF(Xposterior, Xprior, [0 0], scale);
+fprintf(fid, ['Via kernel density estimation (bandwidth x%d), the log BF ', ...
+   'for the joint null is %s\n'], scale, formatLogBF(logBF));
+
+logBF = kdeLogBF(chains.gammaPM(:), chains.gammaPrior(:), 0, scale);
+fprintf(fid, ['Via kernel density estimation (bandwidth x%d), the log BF ', ...
+   'for the perceptual-memory null is %s\n'], scale, formatLogBF(logBF));
+
+logBF = kdeLogBF(chains.gammaPS(:), chains.gammaPrior(:), 0, scale);
+fprintf(fid, ['Via kernel density estimation (bandwidth x%d), the log BF ', ...
+   'for the perceptual-similarity null is %s\n'], scale, formatLogBF(logBF));
+end
+
+function logBF = kdeLogBF(Xposterior, Xprior, Xcrit, scale)
+n = size(Xposterior, 1);
+d = size(Xposterior, 2);
+sigma = std(Xposterior, 0, 1);
+bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
+fPosterior = ksdensity(Xposterior, Xcrit, 'Bandwidth', bw * scale);
+
+n = size(Xprior, 1);
+d = size(Xprior, 2);
+sigma = std(Xprior, 0, 1);
+bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
+fPrior = ksdensity(Xprior, Xcrit, 'Bandwidth', bw * scale);
+
+logBF = densityLogBF(fPosterior, fPrior);
+end
+
+function logBF = densityLogBF(fPosterior, fPrior)
+%DENSITYLOGBF log(fPost/fPrior); ±Inf when a density is zero/nonfinite.
+if ~(isfinite(fPosterior) && fPosterior > 0)
+   if ~(isfinite(fPrior) && fPrior > 0)
+      logBF = NaN;
+   else
+      logBF = -Inf;
+   end
+elseif ~(isfinite(fPrior) && fPrior > 0)
+   logBF = Inf;
+else
+   logBF = log(fPosterior) - log(fPrior);
+end
+end
+
+function str = formatLogBF(logBF, bound)
+%FORMATLOGBF Printable log BF; extreme/nonfinite values as inequalities.
+if nargin < 2
+   bound = 100;
+end
+if ~isfinite(logBF)
+   if isnan(logBF)
+      str = 'undefined';
+   elseif logBF < 0
+      str = sprintf('< -%d', bound);
+   else
+      str = sprintf('> +%d', bound);
+   end
+elseif logBF <= -bound
+   str = sprintf('< -%d', bound);
+elseif logBF >= bound
+   str = sprintf('> +%d', bound);
+else
+   str = sprintf('= %.0f', logBF);
+end
 end
 
 function chains = loadModeAClusterChains(fileNames)
