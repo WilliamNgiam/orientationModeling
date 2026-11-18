@@ -161,6 +161,7 @@ drawFigures   % edit analysisList at top of script to enable analyses
 | `statisticalSummaries` | Text summaries under `analysis/results/` |
 | `swapExamples` | Swap-error example trials |
 | `memoryNoSwap` | SI: no-swap memory μ scatter (`memoryReproductionNoSwapMCMC`) |
+| `similarityEntropification` | SI: similarity+entropification μ scatter |
 | `descriptiveAdequacy*` | SI posterior-predictive checks (commented; NoSwap needs plain yP mat) |
 | `clusterSavageDickey` | Plain-cluster SD (DIC Mode A via `loadModeAClusterChains` on main cluster pool) |
 
