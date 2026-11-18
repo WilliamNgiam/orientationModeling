@@ -5,10 +5,10 @@
 % wrap alignment, split-Rhat / ESS gates, 10k joint draws.
 %
 % Storage: storage/perceptualReproductionMCMC_tomicBays_jags.mat
-% (does not overwrite perceptualReproduction_tomicBays_jags.mat)
+% Use dataList 'tomicBaysPerception2024' (parse_tomicBays2024) or 'tomicBaysPerception' (parse_1).
 
 clear; close all;
-preLoad = true;
+preLoad = false;
 printFigures = true;
 
 thisDir = fileparts(mfilename('fullpath'));
@@ -20,8 +20,9 @@ modelName = 'perceptualReproductionMCMC';
 engine = 'jags';
 
 dataList = {...
-   'tomicBaysPerception', ...
-   };
+  % 'tomicBaysPerception'; ...
+  'tomicBaysPerception2024', ...
+  };
 
 pi = 3.1415;
 load(fullfile(thisDir, '..', 'supportingFiles', 'pantoneColors.mat'), 'pantone')
@@ -32,9 +33,13 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysPerception'
+      case {'tomicBaysPerception', 'tomicBaysPerception2024'}
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
+         if strcmp(dataName, 'tomicBaysPerception2024')
+            dataName = 'tomicBays2024';
+         else
+            dataName = 'tomicBays';
+         end
          load(fullfile(dataDir, dataName), 'dp');
 
          y = dp.response;

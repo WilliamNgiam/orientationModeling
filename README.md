@@ -5,9 +5,9 @@ Preprint: [https://osf.io/preprints/psyarxiv/fm9vz_v2](https://osf.io/preprints/
 
 This repository contains the MATLAB and JAGS code used to fit and compare generative psychological models of orientation representations across perceptual reproduction, visual working memory, and similarity comparison. The analyses test whether a single shared psychological representation can account for all three tasks, or whether memory and similarity require task-specific distortions relative to perception.
 
-Empirical data are from [Tomic & Bays (2024)](https://psycnet.apa.org/record/2023-21056-001), packaged as `data/tomicBays.mat`. Each task is implemented with a wrap-copy generative model and, for several tasks, an alternative von Mises generative model—each with its own JAGS specification (`.txt`) and MATLAB driver (`.m`).
+Empirical data are from [Tomic & Bays (2024)](https://psycnet.apa.org/record/2023-21056-001), packaged as **`data/tomicBays2024.mat`** (see `data/README.md`). Each task is implemented with a wrap-copy generative model and, for several tasks, an alternative von Mises generative model—each with its own JAGS specification (`.txt`) and MATLAB driver (`.m`).
 
-Models write MCMC output under per-task `storage/`, task figures under `figures/`, and paper-level analyses under `analysis/`.
+Models write MCMC output under per-task `storage/` (gitignored), task figures under `figures/`, and paper-level analyses under `analysis/`.
 
 ## Requirements
 
@@ -22,23 +22,19 @@ Add the repo root and `supportingFiles/` to the MATLAB path, or run drivers from
 
 | Location | Contents |
 |----------|----------|
-| `data/tomicBays.mat` | Preprocessed perceptual (`dp`), memory (`dm`), and similarity (`ds`) structs used by all drivers |
+| `data/tomicBays2024.mat` | **Canonical** perceptual (`dp`), memory (`dm`), and similarity (`ds`) structs |
 | `data/*.csv` | Raw task exports from the authors |
-| `data/parse_1.m` | Script that builds similarity trial indices from CSV (see `data/README.md`) |
+| `data/parse_tomicBays2024.m` | Builds `tomicBays2024.mat` from CSV (+ `ds` from a local parse_1 product) |
 
-All task scripts load `../data/tomicBays` relative to their folder.
+All task scripts load `tomicBays2024` (via aliases such as `tomicBaysPerception2024`). See `data/README.md` for the CSV angle convention and the discarded mis-parsed `tomicBays` packaging. MCMC chain counts, burn-in, thinning, and keep rules for each analysis are in [`MCMC.md`](MCMC.md).
 
 ## Repository layout
 
 ```
 orientationModeling/
-├── data/                    # tomicBays.mat and raw CSVs
-<<<<<<< HEAD
-├── supportingFiles/           # Shared plotting and chain-filter helpers
-├── jags-vonMises/           # JAGS module: x ~ dvonmises(mu, kappa)
-=======
+├── data/                    # tomicBays2024.mat and raw CSVs
 ├── supportingFiles/         # Shared plotting and chain-filter helpers
->>>>>>> 32d1a5ae83852a73558c2871e4df457f07595319
+├── jags-vonMises/           # JAGS module: x ~ dvonmises(mu, kappa)
 ├── perceptualReproduction/  # Single-stimulus reproduction
 ├── memoryReproduction/      # Working-memory reproduction (swap + no-swap)
 ├── similarityComparison/    # Pairwise similarity choice (AB vs CD)
@@ -71,6 +67,8 @@ JAGS does not provide a half-circle Gaussian. The wrap-copy construction impleme
 | `clusterRepresentation/` | `clusterRepresentation.m` | `clusterRepresentation_jags.txt` | Perceptual μ plus task-specific shifts (γ) |
 
 `similarityComparison/similarityWrapChainInits.m` supplies censored trial initial values for the similarity driver.
+
+**Cluster γ modes.** On `tomicBays2024`, cluster posteriors are multimodal in `(γ_pm, γ_ps)`. Notes and DIC guidance live in `clusterRepresentation.m` (near the Savage–Dickey block). Prefer the near-zero `γ_pm` mode for paper figures; do not pool disagreeing modes.
 
 ### Von Mises generative models (alternative specification)
 
@@ -122,11 +120,11 @@ cd /path/to/orientationModeling/perceptualReproduction
 perceptualReproduction          % set preLoad = false in script to refit
 ```
 
-Equivalent entry points exist in each task folder. After a successful run, expect `storage/<modelName>_tomicBays_jags.mat` and figures under `figures/`.
+Equivalent entry points exist in each task folder. After a successful run, expect `storage/<modelName>_tomicBays2024_jags.mat` and figures under `figures/`.
 
 ### 2. Fit joint-task models (optional standalone)
 
-`commonRepresentation` and `clusterRepresentation` fit **all three tasks in one JAGS run**. They load only `data/tomicBays.mat` and write their own `storage/*.mat` files—they do **not** read posteriors from the single-task fits.
+`commonRepresentation` and `clusterRepresentation` fit **all three tasks in one JAGS run**. They load `data/tomicBays2024.mat` and write their own `storage/*.mat` files—they do **not** read posteriors from the single-task fits.
 
 ```matlab
 cd ../commonRepresentation
@@ -136,7 +134,7 @@ cd ../clusterRepresentation
 clusterRepresentation
 ```
 
-Fit the single-task models first only if you need their chains for `analysis/drawFigures.m` (e.g. `threeScatter`, `fourScatter`) or for side-by-side comparison with the joint models.
+Fit the single-task models first only if you need their chains for `analysis/drawFigures.m` (e.g. `fourScatter`) or for side-by-side comparison with the joint models.
 
 ### 3. Generate cross-task figures
 
@@ -149,39 +147,35 @@ drawFigures   % edit analysisList at top of script to enable analyses
 
 | Script | Purpose |
 |--------|---------|
-| `drawFigures.m` | Multi-panel paper figures; enable cases via `analysisList` |
+| `drawFigures.m` | Multi-panel paper / SOI figures; enable cases via `analysisList` |
 
 **`drawFigures.m` analysis options** (uncomment in `analysisList`):
 
 | Name | Description |
 |------|-------------|
-| `threeScatter` | Perceptual, memory, similarity representation scatters |
-| `fourScatter` | Adds common representation |
-| `twoRepresentations` | Polar comparison of perceptual vs similarity μ |
-| `clusterSavageDickey` | Savage–Dickey plots for cluster γ parameters |
-| `statisticalSummaries` | Text summaries written under `analysis/results/` |
-| `descriptiveAdequacyPerceptual` | Posterior predictive check, perception |
-| `descriptiveAdequacyMemory` | Posterior predictive check, memory (swap) |
-| `descriptiveAdequacyMemoryNoSwap` | Posterior predictive check, memory (no swap) |
-| `descriptiveAdequacySimilarity` | Posterior predictive agreement histogram |
-| `swapExamples` | Example trials with strong swap inference (`memoryReproduction` chains) |
+| `fourScatter` | Perceptual, memory, similarity, common representation scatters |
+| `clusterSavageDickeyEntropification` | Savage–Dickey for cluster+entrop γ |
+| `statisticalSummaries` | Text summaries under `analysis/results/` |
+| `threeScatter` / `twoRepresentations` / `descriptiveAdequacy*` / `swapExamples` | Optional / exploratory (commented by default) |
+| `clusterSavageDickey` | Plain-cluster SD (needs Mode-A keep on 2024; commented until available) |
 
 Outputs go to `analysis/figures/` (and `analysis/results/` for summaries). Most analyses load precomputed chains from `../<task>/storage/`.
 
 | Script | Purpose |
 |--------|---------|
-| `findDiscriminatingSimilarityTrials.m` | Example trials where compressed vs physical μ maps disagree; requires `similarityComparison/storage/similarityComparison_mixture_tomicBays_jags.mat` |
+| `findDiscriminatingSimilarityTrials.m` | Example trials where compressed vs physical μ maps disagree |
+
+## Known gaps (tomicBays2024)
+
+- **commonRepresentation** on 2024: in progress / use legacy `commonRepresentation_tomicBays_jags` as a temporary placeholder in `drawFigures` only.
+- **similarityComparison** on 2024: no `storage/*_tomicBays2024_*` yet (drivers default to 2024; refit needed).
+- **plain clusterRepresentation** on 2024: no agreed keep set across γ modes; DIC favors near-zero `γ_pm` (see `clusterRepresentation.m`). Cluster+entrop weekend keep is available.
+- **von Mises / Jones–Pewsey** on 2024: drivers updated; refits may still be needed.
 
 ## Gitignored paths
 
-`.gitignore` excludes `**/storage/` and `**/tmp/`. Clone the repo and run drivers to regenerate MCMC files locally, or copy `storage/*.mat` from a completed analysis environment.
+`.gitignore` excludes `**/storage/`, `**/tmp/`, mis-parsed `data/tomicBays.mat` / `parse_1.m`, transitional `data/tomicBays_v2.mat`, ad-hoc weekend/DIC runners, and `analysis/drawFigures_legacyTomicBays.m`. Clone the repo and run drivers to regenerate MCMC files locally, or copy `storage/*.mat` from a completed analysis environment.
 
 ## Citation
 
-If you use this code, please cite:
-
-> Ngiam, W. X. Q., & Lee, M. D. (2026). Model-based evidence for task-dependent representations in psychological similarity and working memory. *PsyArXiv.* https://osf.io/preprints/psyarxiv/fm9vz_v3
-
-The empirical dataset should also be cited:
-
-> Tomić, I., & Bays, P. M. (2024). [Perceptual similarity judgments do not predict the distribution of errors in working memory. Journal of Experimental Psychology: Learning, Memory, and Cognition, 50(4), 535–549](https://psycnet.apa.org/record/2023-21056-001).
+Please cite the preprint above and Tomic & Bays (2024) when using this code or the data packaging.

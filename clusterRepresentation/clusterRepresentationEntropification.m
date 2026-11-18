@@ -5,15 +5,15 @@
 % similarityComparisonEntropification (wrap-copy samples and a logistic
 % in the signed distance gap, one w), centered on muS.
 %
-% Sampler: orientationMcmcProtocol (8 chains kept in full, data-informed
-% inits, wrap alignment, split-Rhat / ESS, 10k joint draws).
+% Canonical data: tomicBays2024. Prefer weekend keep when present:
+%   storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags.mat
+% Gamma-mode / DIC notes for the non-entrop model: clusterRepresentation.m.
 %
-% Storage: storage/clusterRepresentationEntropification_tomicBays_jags.mat
-% Figures: figures/tomicBays_clusterRepresentationEntropification.*
-% Does not read or write the original clusterRepresentation outputs.
+% Sampler: orientationMcmcProtocol (or weekend fixed-schedule select).
+% Does not read or write the non-entrop clusterRepresentation outputs.
 
 clear; close all;
-preLoad = true;
+preLoad = false;
 printFigures = true;
 
 thisDir = fileparts(mfilename('fullpath'));
@@ -25,7 +25,7 @@ modelName = 'clusterRepresentationEntropification';
 engine = 'jags';
 
 dataList = {...
-   'tomicBays', ...
+   'tomicBays2024', ...
    };
 
 pi = 3.1415;
@@ -37,9 +37,8 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBays'
+      case {'tomicBays', 'tomicBays2024'}
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
          load(fullfile(dataDir, dataName), 'dp', 'dm', 'ds');
 
          nStimuli = dp.nStimuli;

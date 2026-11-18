@@ -1,3 +1,5 @@
+
+
 function [chains, stats, diagnostics, info] = orientationMcmcProtocol(cfg)
 %ORIENTATIONMCMCPROTOCOL Chunked JAGS sampling without chain surgery.
 %

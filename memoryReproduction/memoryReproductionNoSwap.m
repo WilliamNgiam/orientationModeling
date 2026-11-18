@@ -1,7 +1,7 @@
 %% Memory reproduction model with swap process
 
 clear; close all;
-preLoad = true;
+preLoad = false;
 printFigures = true;
 
 % graphical model script
@@ -12,7 +12,7 @@ CI = [2.5 97.5];
 
 % data sets
 dataList = {...
-   'tomicBaysMemory'; ...
+   'tomicBaysMemory2024'; ...
    };
 
 %% general constants
@@ -23,9 +23,13 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysMemory'
+      case {'tomicBaysMemory', 'tomicBaysMemory2024'}
          dataDir = '../data/';
-         dataName = 'tomicBays';
+         if strcmp(dataName, 'tomicBaysMemory2024')
+            dataName = 'tomicBays2024';
+         else
+            dataName = 'tomicBays';
+         end
          load([dataDir dataName], 'dm');
 
          [~, ~, setSize] = unique(dm.setSize, 'stable');

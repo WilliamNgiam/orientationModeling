@@ -31,7 +31,7 @@ modelName = 'perceptualReproductionJP';
 engine = 'jags';
 
 dataList = {...
-   'tomicBaysPerception'; ...
+   'tomicBaysPerception2024'; ...
    };
 
 pi = 3.141592653589793;
@@ -43,9 +43,9 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysPerception'
+      case 'tomicBaysPerception2024'
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
+         dataName = 'tomicBays2024';
          load(fullfile(dataDir, dataName), 'dp');
 
          y = dp.response;

@@ -11,7 +11,7 @@ engine = 'jags';
 
 % data sets
 dataList = {...
-   'tomicBays'; ...
+   'tomicBays2024'; ...
    };
 
 %% constants
@@ -25,9 +25,8 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBays'
+      case {'tomicBays', 'tomicBays2024'}
          dataDir = '../data/';
-         dataName = 'tomicBays';
          load([dataDir dataName], 'dp', 'dm', 'ds');
 
          nStimuli = dp.nStimuli;
@@ -65,7 +64,7 @@ for dataIdx = 1:numel(dataList)
    params = {'mu', 'sigmaP', 'sigmaM', 'sigmaS', 'ySP', 'nu', 'xi'};
 
      % MCMC properties
-   nChains    = 8;     % number of MCMC chains
+   nChains    = 4;     % number of MCMC chains
    nBurnin    = 1e3;   % number of discarded burn-in samples
    nSamples   = 2e3;   % number of collected samples
    nThin      = 1;    % number of samples between those collected
@@ -155,7 +154,6 @@ for dataIdx = 1:numel(dataList)
 
     % just convergent enough chains
    [keepChains, rHat] = findKeepChains(chains.sigmaS, 2, 1.1);
- % keepChains =  keepChains(3);
    fields = fieldnames(chains);
    for i = 1:numel(fields)
       chains.(fields{i}) = chains.(fields{i})(:, keepChains);

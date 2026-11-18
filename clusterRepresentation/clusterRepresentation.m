@@ -11,7 +11,7 @@ engine = 'jags';
 
 % data sets
 dataList = {...
-   'tomicBays'; ...
+   'tomicBays2024'; ...
    };
 
 %% constants
@@ -25,9 +25,8 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBays'
+      case {'tomicBays', 'tomicBays2024'}
          dataDir = '../data/';
-         dataName = 'tomicBays';
          load([dataDir dataName], 'dp', 'dm', 'ds');
 
          nStimuli = dp.nStimuli;
@@ -60,7 +59,7 @@ for dataIdx = 1:numel(dataList)
       'muP', 'muM', 'muS'};
 
     % MCMC properties
-   nChains    = 20;     % number of MCMC chains
+   nChains    = 8;     % number of MCMC chains
    nBurnin    = 1e3;   % number of discarded burn-in samples
    nSamples   = 2e3;   % number of collected samples
    nThin      = 5;    % number of samples between those collected
@@ -149,11 +148,21 @@ for dataIdx = 1:numel(dataList)
 
    end
 
-   keepChains = [11 15 19]; % by visual inspection to ensure similarity follows higher-likelihood mode
-   fields = fieldnames(chains);
-   for i = 1:numel(fields)
-      chains.(fields{i}) = chains.(fields{i})(:, keepChains);
-   end
+   % --- Mode selection / DIC (tomicBays2024) ---
+   % Posterior mass on (gammaPM, gammaPS) is multimodal. Two recurrent modes are
+   % near (0, 1.5) and (2, 1.5). Short JAGS runs initialized in each mode with the
+   % Trinity `dic` module (deviance monitored) favor the near-zero gammaPM mode
+   % by DIC (see storage/clusterGammaModeCompare_tomicBays2024_jags.mat; runners
+   % are local/ad-hoc and not in the public repo). Merged many-chain pools
+   % (WeekendMerged) can land in the paper-like muS band yet still fail R-hat
+   % when both gamma modes are pooled. Prefer Mode A (near-zero gammaPM) when
+   % choosing chains for Savage–Dickey and paper figures; do not average modes.
+   %
+   % keepChains = [11 15 19]; % legacy visual keep on mis-parsed tomicBays
+   % fields = fieldnames(chains);
+   % for i = 1:numel(fields)
+   %    chains.(fields{i}) = chains.(fields{i})(:, keepChains);
+   % end
 
    % two-dimensional savage dickey analysis
    gammaLo = 0; gammaHi = 3; gammaTick = 1; gammaEps = 0.052;

@@ -11,7 +11,7 @@
 % Requires the von Mises JAGS module in ../jags-vonMises (see README).
 
 clear; close all;
-preLoad = true;
+preLoad = false;
 printFigures = true;
 
 thisDir = fileparts(mfilename('fullpath'));
@@ -35,7 +35,7 @@ engine = 'jags';
 
 % data sets
 dataList = {...
-   'tomicBaysPerception'; ...
+   'tomicBaysPerception2024'; ...
    };
 
 %% constants
@@ -49,9 +49,13 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysPerception'
+      case {'tomicBaysPerception', 'tomicBaysPerception2024'}
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
+         if strcmp(dataName, 'tomicBaysPerception2024')
+            dataName = 'tomicBays2024';
+         else
+            dataName = 'tomicBays';
+         end
          load(fullfile(dataDir, dataName), 'dp');
 
          y = dp.response;

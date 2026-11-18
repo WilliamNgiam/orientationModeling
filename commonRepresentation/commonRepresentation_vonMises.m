@@ -32,7 +32,7 @@ modelName = 'commonRepresentation_vonMises';
 engine = 'jags';
 
 dataList = {...
-   'tomicBays'; ...
+   'tomicBays2024'; ...
    };
 
 pi = 3.141592653589793;
@@ -44,9 +44,8 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBays'
+      case {'tomicBays', 'tomicBays2024'}
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
          load(fullfile(dataDir, dataName), 'dp', 'dm', 'ds');
 
          nStimuli = dp.nStimuli;

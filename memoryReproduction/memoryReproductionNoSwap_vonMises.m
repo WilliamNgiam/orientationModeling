@@ -11,7 +11,7 @@
 % Requires the von Mises JAGS module in ../jags-vonMises (see README).
 
 clear; close all;
-preLoad = true;
+preLoad = false;
 printFigures = true;
 
 thisDir = fileparts(mfilename('fullpath'));
@@ -31,7 +31,7 @@ modelName = 'memoryReproductionNoSwap_vonMises';
 engine = 'jags';
 
 dataList = {...
-   'tomicBaysMemory'; ...
+   'tomicBaysMemory2024'; ...
    };
 
 pi = 3.141592653589793;
@@ -43,9 +43,13 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysMemory'
+      case {'tomicBaysMemory', 'tomicBaysMemory2024'}
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
+         if strcmp(dataName, 'tomicBaysMemory2024')
+            dataName = 'tomicBays2024';
+         else
+            dataName = 'tomicBays';
+         end
          load(fullfile(dataDir, dataName), 'dm');
 
          [~, ~, setSize] = unique(dm.setSize, 'stable');

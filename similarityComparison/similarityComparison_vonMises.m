@@ -12,7 +12,7 @@ setenv('JAGS_LIBS', fullfile(fileparts(mfilename('fullpath')), '..', 'jags-vonMi
 
 % data sets
 dataList = {...
-   'tomicBaysSimilarity'; ...
+   'tomicBaysSimilarity2024'; ...
    };
 
 %% constants (must match similarityComparison_vonMises_symmetry_jags.txt)
@@ -26,9 +26,9 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysSimilarity'
+      case 'tomicBaysSimilarity2024'
          dataDir = '../data/';
-         dataName = 'tomicBays';
+         dataName = 'tomicBays2024';
          load([dataDir dataName], 'ds');
 
          a = ds.aIdx;

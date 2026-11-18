@@ -1,17 +1,18 @@
 %% Memory reproduction model with swap process
 
 clear; close all;
-preLoad = true;
-printFigures = true;
+preLoad = false;
+printFigures = false;
 
 % graphical model script
 modelDir = './';
 modelName = 'memoryReproduction';
 engine = 'jags';
 
-% data sets
+% data sets (tomicBaysMemory2024 = parse_tomicBays2024 /2-before-mod; tomicBaysMemory = parse_1)
 dataList = {...
-  'tomicBaysMemory'; ...
+  % 'tomicBaysMemory'; ...
+  'tomicBaysMemory2024', ...
   };
 
 %% constants
@@ -25,9 +26,13 @@ for dataIdx = 1:numel(dataList)
   dataName = dataList{dataIdx};
   switch dataName
 
-    case 'tomicBaysMemory'
+    case {'tomicBaysMemory', 'tomicBaysMemory2024'}
       dataDir = '../data/';
-      dataName = 'tomicBays';
+      if strcmp(dataName, 'tomicBaysMemory2024')
+         dataName = 'tomicBays2024';
+      else
+         dataName = 'tomicBays';
+      end
       load([dataDir dataName], 'dm');
 
       [~, ~, setSize] = unique(dm.setSize, 'stable');

@@ -3,3 +3,46 @@
 **/archive/
 **/old/
 runModels.m
+memoryReproduction/angleConventionNote.md
+
+# Mis-parsed / transitional Tomic packaging — kept on disk, not for GitHub.
+# Tracked parse builder: data/parse_tomicBays2024.m → tomicBays2024.mat
+data/tomicBays.mat
+data/tomicBays_v2.mat
+data/parse_1.m
+data/parse_2.m
+data/parse_*.m
+!data/parse_tomicBays2024.m
+
+# Backup of pre-tidy drawFigures (legacy mis-parsed paths)
+analysis/drawFigures_legacyTomicBays.m
+
+# Ad-hoc runners / logs for reparse patching and weekend MCMC suites
+logs/
+runWeekend*.m
+runWeekend*.sh
+runClusterWeekend*.m
+runClusterV2*.m
+runCommonWeekendOnly.m
+runDesktopModeThenCommons.m
+runV2LightMcmc.m
+runV2LightMcmc.sh
+runWeekendAfterCommon.m
+compareClusterGammaModes.m
+countModeAKeep.m
+exploreMergedClusterBand.m
+mergeClusterWeekendPools.m
+plotWeekendV2Results.m
+watchCommonThenCluster.sh
+supportingFiles/weekend*.m
+# MCMC.md documents weekendJobDefs + SelectMCMC drivers — keep them trackable
+!supportingFiles/weekendJobDefs.m
+clusterRepresentation/reselectClusterRepresentationSelectMCMC.m
+clusterRepresentation/plotClusterRepresentationSelectMCMC.m
+clusterRepresentation/reportClusterSavageDickey.m
+
+# Transitional figure names (canonical is *tomicBays2024_*)
+**/figures/*tomicBays_v2*
+
+# MATLAB autosaves
+**/*.asv

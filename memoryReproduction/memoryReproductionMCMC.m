@@ -5,14 +5,14 @@
 %   wrap alignment of mu, split-Rhat / ESS gates, 10k joint draws for
 %   Savage-Dickey on omega. See memoryReproductionMCMC.pdf.
 %
-% Storage: storage/memoryReproductionMCMC_tomicBays_jags.mat
-% (does not overwrite memoryReproduction_tomicBays_jags.mat)
+% Storage: storage/memoryReproductionMCMC_<dataName>_jags.mat
+% Use dataList 'tomicBaysMemory2024' (parse_tomicBays2024) or 'tomicBaysMemory' (parse_1).
 %
 % Trinity's JAGS wrapper has no separate adapt command; nBurnin = 7000 is
 % ~2k JAGS adaptation + 5k post-adapt burn-in.
 
 clear; close all;
-preLoad = true;
+preLoad = false;
 printFigures = true;
 
 thisDir = fileparts(mfilename('fullpath'));
@@ -24,7 +24,8 @@ modelName = 'memoryReproductionMCMC';
 engine = 'jags';
 
 dataList = {...
-  'tomicBaysMemory'; ...
+  % 'tomicBaysMemory'; ...
+  'tomicBaysMemory2024', ...
   };
 
 %% constants
@@ -53,9 +54,13 @@ for dataIdx = 1:numel(dataList)
   dataName = dataList{dataIdx};
   switch dataName
 
-    case 'tomicBaysMemory'
+    case {'tomicBaysMemory', 'tomicBaysMemory2024'}
       dataDir = '../data/';
-      dataName = 'tomicBays';
+      if strcmp(dataName, 'tomicBaysMemory2024')
+         dataName = 'tomicBays2024';
+      else
+         dataName = 'tomicBays';
+      end
       load([dataDir dataName], 'dm');
 
       [~, ~, setSize] = unique(dm.setSize, 'stable');

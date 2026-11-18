@@ -4,8 +4,8 @@
 % sampler: 8 chains kept in full, data-informed inits, no nu/yP monitors,
 % wrap alignment, split-Rhat / ESS gates, 10k joint draws.
 %
-% Storage: storage/memoryReproductionNoSwapMCMC_tomicBays_jags.mat
-% (does not overwrite memoryReproductionNoSwap_tomicBays_jags.mat)
+% Storage: storage/memoryReproductionNoSwapMCMC_<dataName>_jags.mat
+% Use dataList 'tomicBaysMemory2024' (parse_tomicBays2024) or 'tomicBaysMemory' (parse_1).
 
 clear; close all;
 preLoad = true;
@@ -20,7 +20,7 @@ modelName = 'memoryReproductionNoSwapMCMC';
 engine = 'jags';
 
 dataList = {...
-   'tomicBaysMemory', ...
+   'tomicBaysMemory2024', ...
    };
 
 pi = 3.1415;
@@ -32,9 +32,13 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysMemory'
+      case {'tomicBaysMemory', 'tomicBaysMemory2024'}
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
+         if strcmp(dataName, 'tomicBaysMemory2024')
+            dataName = 'tomicBays2024';
+         else
+            dataName = 'tomicBays';
+         end
          load(fullfile(dataDir, dataName), 'dm');
 
          [~, ~, setSize] = unique(dm.setSize, 'stable');

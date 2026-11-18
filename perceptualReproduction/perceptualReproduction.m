@@ -1,7 +1,7 @@
 %% Perceptual reproduction model
 
 clear; close all;
-preLoad = true;
+preLoad = false;
 printFigures = true;
 
 % graphical model script
@@ -9,10 +9,11 @@ modelDir = './';
 modelName = 'perceptualReproduction';
 engine = 'jags';
 
-% data sets
+% data sets (tomicBaysPerception2024 = parse_tomicBays2024; tomicBaysPerception = parse_1)
 dataList = {...
-   'tomicBaysPerception'; ...
-   };
+  % 'tomicBaysPerception'; ...
+  'tomicBaysPerception2024', ...
+  };
 
 %% constants
 pi = 3.1415;
@@ -25,9 +26,13 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysPerception'
+      case {'tomicBaysPerception', 'tomicBaysPerception2024'}
          dataDir = '../data/';
-         dataName = 'tomicBays';
+         if strcmp(dataName, 'tomicBaysPerception2024')
+            dataName = 'tomicBays2024';
+         else
+            dataName = 'tomicBays';
+         end
          load([dataDir dataName], 'dp');
 
          y = dp.response;

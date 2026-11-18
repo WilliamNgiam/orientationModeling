@@ -21,7 +21,7 @@ modelName = 'similarityComparisonEntropification';
 engine = 'jags';
 
 dataList = {...
-   'tomicBaysSimilarity', ...
+   'tomicBaysSimilarity2024', ...
    };
 
 pi = 3.1415;
@@ -33,9 +33,9 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysSimilarity'
+      case 'tomicBaysSimilarity2024'
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
+         dataName = 'tomicBays2024';
          load(fullfile(dataDir, dataName), 'ds');
 
          a = ds.aIdx;

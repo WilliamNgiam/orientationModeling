@@ -4,12 +4,11 @@
 % Similarity uses similarityComparisonEntropification (wrap-copy samples
 % and a logistic in the signed distance gap, one w).
 %
-% Sampler: orientationMcmcProtocol (8 chains kept in full, data-informed
-% inits, wrap alignment, split-Rhat / ESS, 10k joint draws).
+% Sampler: orientationMcmcProtocol. Prefer commonRepresentationEntropificationMCMC
+% for the dual-dataset / *MCMC naming; this script is the same model.
 %
-% Storage: storage/commonRepresentationEntropification_tomicBays_jags.mat
-% Figures: figures/tomicBays_commonRepresentationEntropification.*
-% Does not read or write the original commonRepresentation outputs.
+% dataList: 'tomicBays2024' (parse_tomicBays2024) or 'tomicBays' (parse_1).
+% Storage: storage/commonRepresentationEntropification_<dataName>_jags.mat
 
 clear; close all;
 preLoad = true;
@@ -24,7 +23,8 @@ modelName = 'commonRepresentationEntropification';
 engine = 'jags';
 
 dataList = {...
-   'tomicBays', ...
+   'tomicBays2024', ...
+   % 'tomicBays', ...
    };
 
 pi = 3.1415;
@@ -36,9 +36,8 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBays'
+      case {'tomicBays', 'tomicBays2024'}
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
          load(fullfile(dataDir, dataName), 'dp', 'dm', 'ds');
 
          nStimuli = dp.nStimuli;

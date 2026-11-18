@@ -33,7 +33,7 @@ modelName = 'memoryReproductionJP';
 engine = 'jags';
 
 dataList = {...
-   'tomicBaysMemory', ...
+   'tomicBaysMemory2024', ...
    };
 
 pi = 3.141592653589793;
@@ -45,9 +45,9 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysMemory'
+      case 'tomicBaysMemory2024'
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
+         dataName = 'tomicBays2024';
          load(fullfile(dataDir, dataName), 'dm');
 
          [~, ~, ssCode] = unique(dm.setSize, 'stable');

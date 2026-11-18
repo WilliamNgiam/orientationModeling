@@ -1,4 +1,12 @@
-% figures and non-modeling analyses for tomic and bays data
+% figures and non-modeling analyses for Tomic & Bays (canonical parse).
+%
+% DATA: tomicBays2024 (parse_tomicBays2024). Legacy mis-parsed tomicBays is used only as a
+% temporary placeholder for commonRepresentation until the 2024 common fit finishes.
+%
+% GAPS (as of tidy): no similarityComparison_*_tomicBays2024 storage yet;
+% plain clusterRepresentation on 2024 has no converged keep set (see mode/DIC note
+% in clusterRepresentation.m). Cluster+entrop weekend keep is available.
+% Paper analyses are active; SI descriptiveAdequacy* are commented (uncomment to regenerate).
 
 clear;
 close all;
@@ -6,22 +14,25 @@ close all;
 printFigures = true;
 
 analysisList = {...
-   % 'threeScatter'; ...
-   % 'fourScatter'; ...
-  % 'twoRepresentations'; ...
-   %'clusterSavageDickey'; ...
-   %'clusterSavageDickeyEntropification'; ...
-   'statisticalSummaries'; ...
-   %'descriptiveAdequacyPerceptual'; ...
+   % --- paper ---
+   %'fourScatter'; ...
+   % 'clusterSavageDickey'; ...      % full [0,3]; needs plain-cluster 2024 Mode-A keep
+   % 'clusterSavageDickeyZoom'; ...  % zoom [0,1]; same dependency
+   'clusterSavageDickeyEntropification'; ...      % full [0,3]
+   'clusterSavageDickeyEntropificationZoom'; ... % zoom [0,1]
+   % 'statisticalSummaries'; ...
+   % 'twoRepresentations'; ...
+   % 'swapExamples'; ...
+   % --- supplementary (SI); uncomment to regenerate ---
+   % 'descriptiveAdequacyPerceptual'; ...
    % 'descriptiveAdequacyMemory'; ...
    % 'descriptiveAdequacyMemoryNoSwap'; ...
    % 'descriptiveAdequacySimilarity'; ...
-   % 'swapExamples'; ...
    };
 
 % load data
 dataDir = '../data/';
-dataName = 'tomicBays';
+dataName = 'tomicBays2024';
 load([dataDir dataName], 'ds', 'dp', 'dm');
 
 % constants
@@ -33,116 +44,14 @@ for analysisIdx = 1:numel(analysisList)
    analysisName = analysisList{analysisIdx};
 
    switch analysisName
-      case 'threeScatter'
-
-         % relative directory structure in github repository
-         fileList = {...
-            '../perceptualReproduction/storage/perceptualReproduction_tomicBays_jags'; ...
-            '../memoryReproduction/storage/memoryReproduction_tomicBays_jags'; ...
-            '../similarityComparison/storage/similarityComparison_tomicBays_jags'};
-
-         fontSize = 20;
-         CIbounds = [2.5 97.5];
-         labels = {'perceptual', 'memory', 'similarity'};
-
-         nModels = numel(fileList);
-         [nRows, nCols] = subplotArrange(nModels);
-
-         F = figure; clf; hold on;
-         setFigure(F, [0.2 0.2 0.6 0.7], '');
-
-         for modelIdx = 1:nModels
-            fileName = fileList{modelIdx};
-            fprintf('Loading pre-stored samples from file %s\n', fileName);
-            load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
-
-            % just keep converged chains
-            switch modelIdx
-               case 1 % perceptual
-                  [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
-               case 2 % memory
-                  [keepChains, rHat] = findKeepChains(chains.sigma_1, 2, 1.1);
-                  keepChains = setdiff(keepChains, 8); % remove 8 via visual inspection of mu_6
-               case 3 % similarity
-                  [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
-            end
-            fields = fieldnames(chains);
-            for i = 1:numel(fields)
-               chains.(fields{i}) = chains.(fields{i})(:, keepChains);
-            end
-
-            % posterior mean and CIs for mu
-            mu = nan(ds.nStimuli, 1);
-            muBounds = nan(ds.nStimuli, 2);
-            for idx = 1:ds.nStimuli
-               vals = chains.(sprintf('mu_%d', idx))(:);
-               [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CIbounds);
-            end
-            muTruth = ds.stimuli;
-
-            subplot(nRows, nCols, modelIdx); cla; hold on;
-            cla; hold on;
-            set(gca, ...
-               'xlim'       , [0 pi]    , ...
-               'xtick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-               'xticklabelrot', 0, ...
-               'xticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-               'ylim'       , [0 pi]    , ...
-               'ytick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
-               'yticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
-               'ticklabelinterpreter', 'latex', ...
-               'box'        , 'off'     , ...
-               'tickdir'    , 'out'     , ...
-               'layer'      , 'top'     , ...
-               'ticklength' , [0.02 0]  , ...
-               'layer'      , 'top'     , ...
-               'clipping'   , 'off'     , ...
-               'fontsize'   , fontSize  );
-            axis square;
-            if modelIdx == 1
-               ylabel('Psychological', 'fontsize', fontSize);
-            end
-            if modelIdx == 2
-               xlabel('Physical', 'fontsize', fontSize);
-            end
-            text(0, pi, labels{modelIdx}, ...
-               'fontsize', fontSize-4, ...
-               'fontweight', 'normal', ...
-               'vert', 'bot', 'hor', 'lef');
-            moveAxis(gca, [1 1 0.95 0.95], [0 0.025 0 0]);
-            Raxes(gca, 0.02, 0.01);
-
-            for i = pi/4:pi/4:3*pi/4
-               plot([i i], [0 pi], '-', ...
-                  'color', pantone.GlacierGray);
-               plot([0 pi], [i i], '-', ...
-                  'color', pantone.GlacierGray);
-            end
-
-            for idx = 1:dp.nStimuli
-               if muBounds(idx, 1) > muBounds(idx, 2)
-                  plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
-                     'color', pantone.ClassicBlue, 'linewidth', 1);
-                  plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
-                     'color', pantone.ClassicBlue, 'linewidth', 1);
-               else
-                  plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
-                     'color', pantone.ClassicBlue, 'linewidth', 1);
-               end
-               plot(muTruth(idx), mu(idx), 'o', ...
-                  'markerfacecolor', pantone.ClassicBlue, ...
-                  'markeredgecolor', 'w', 'linewidth', 0.5, 'markersize', 4);
-            end
-            plot([0 pi], [0 pi], '-', ...
-               'color', pantone.AuroraRed, 'linewidth', 0.5);
-         end
-
       case 'fourScatter'
 
          % relative directory structure in github repository
+         % perceptual/memory: tomicBays2024 MCMC; similarity: GAP (legacy mat);
+         % common: PLACEHOLDER legacy mis-parsed fit until 2024 common finishes.
          fileList = {...
-            '../perceptualReproduction/storage/perceptualReproduction_tomicBays_jags'; ...
-            '../memoryReproduction/storage/memoryReproduction_tomicBays_jags'; ...
+            '../perceptualReproduction/storage/perceptualReproductionMCMC_tomicBays2024_jags'; ...
+            '../memoryReproduction/storage/memoryReproductionMCMC_tomicBays2024_jags'; ...
             '../similarityComparison/storage/similarityComparison_tomicBays_jags'; ...
             '../commonRepresentation/storage/commonRepresentation_tomicBays_jags'};
 
@@ -159,7 +68,8 @@ for analysisIdx = 1:numel(analysisList)
          for modelIdx = 1:nModels
             fileName = fileList{modelIdx};
             fprintf('Loading pre-stored samples from file %s\n', fileName);
-            load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+            % Load chains only (avoids stale function-handle warnings from inits).
+            load(sprintf('%s', fileName), 'chains');
 
             % just keep converged chains
             switch modelIdx
@@ -260,7 +170,7 @@ for analysisIdx = 1:numel(analysisList)
 
          % relative directory structure in github repository
          fileList = {...
-            '../perceptualReproduction/storage/perceptualReproduction_tomicBays_jags'; ...
+            '../perceptualReproduction/storage/perceptualReproductionMCMC_tomicBays2024_jags'; ...
             '../similarityComparison/storage/similarityComparison_tomicBays_jags'; ...
             };
 
@@ -276,7 +186,8 @@ for analysisIdx = 1:numel(analysisList)
             fileName = fileList{modelIdx};
 
             fprintf('Loading pre-stored samples from file %s\n', fileName);
-            load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+            % chains only — avoids stale similarityWrapChainInits handle warnings
+            load(sprintf('%s', fileName), 'chains');
 
             % just keep converged chains
             switch modelIdx
@@ -336,170 +247,25 @@ for analysisIdx = 1:numel(analysisList)
 
 
       case 'clusterSavageDickey'
+         % PLACEHOLDER until plain-cluster 2024 Mode-A keep exists.
+         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags';
+         chains = loadKeptClusterChains(fileName);
+         drawClusterSavageDickeyFigure(chains, pantone, [0 3], 1);
 
-         fileName = '../clusterRepresentation/storage/clusterRepresentation_tomicBays_jags';
-         fprintf('Loading pre-stored samples from file %s\n', fileName);
-         load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+      case 'clusterSavageDickeyZoom'
+         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags';
+         chains = loadKeptClusterChains(fileName);
+         drawClusterSavageDickeyFigure(chains, pantone, [0 1], 0.25);
 
-         keepChains = [11 15 19]; % by visual inspection to ensure similarity follows higher-likelihood mode
-         fields = fieldnames(chains);
-         for i = 1:numel(fields)
-            chains.(fields{i}) = chains.(fields{i})(:, keepChains);
-         end
+      case 'clusterSavageDickeyEntropification'
+         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags';
+         chains = loadKeptClusterChains(fileName);
+         drawClusterSavageDickeyFigure(chains, pantone, [0 3], 1);
 
-         % two-dimensional savage dickey analysis
-         gammaLo = 0; gammaHi = 3; gammaTick = 1; gammaEps = 0.052;
-         gammaE = (gammaLo-gammaEps/2):gammaEps:(gammaHi + gammaEps/2);
-         gammaC = gammaLo:gammaEps:gammaHi;
-
-         countPosterior = histcounts2(chains.gammaPM(:), chains.gammaPS(:), ...
-            gammaE, gammaE, ...
-            'normalization', 'probability');
-         count = histcounts(chains.gammaPrior(:), gammaE);
-         count(1) = 2*count(1);
-         count = count/sum(count);
-         countPrior = count'*count;
-
-         fontSize = 18;
-         scale = 0.5;
-         colorPrior = pantone.Custard;
-         colorPosterior = pantone.ClassicBlue;
-
-         F = figure; clf; hold on;
-         setFigure(F, [0.2 0.2 0.4 0.4], '');
-
-         % axis
-         set(gca, ...
-            'xlim'       , [gammaLo gammaHi]    , ...
-            'xtick'      , gammaLo:gammaTick:gammaHi    , ...
-            'ylim'       , [gammaLo gammaHi]    , ...
-            'ytick'      , gammaLo:gammaTick:gammaHi    , ...
-            'box'        , 'off'     , ...
-            'tickdir'    , 'out'     , ...
-            'layer'      , 'top'     , ...
-            'ticklength' , [0.02 0]  , ...
-            'clipping'   , 'off'     , ...
-            'fontsize'   , fontSize  );
-         axis square;
-         xlabel('$\gamma_{\mathrm{pm}}$', 'fontsize', fontSize+4, 'interp', 'latex');
-         ylabel('$\gamma_{\mathrm{ps}}$', 'fontsize', fontSize+4, 'interp', 'latex');
-         moveAxis(gca, [1 1 0.9 0.9], [0 0.025 0 0]);
-         Raxes(gca, 0.01, 0.01);
-
-         for i = 1:length(gammaC)
-            for j = 1:length(gammaC)
-               val = sqrt(countPrior(i, j))*scale;
-               rectangle('position', [gammaC(i)-val/2 gammaC(j)-val/2 val val], ...
-                  'curvature', [1 1], ...
-                  'facecolor', colorPrior, ...
-                  'edgecolor', colorPrior);
-               val = sqrt(countPosterior(i, j))*scale;
-               if val > 0
-                  rectangle('position', [gammaC(i)-val/2 gammaC(j)-val/2 val val], ...
-                     'curvature', [1 1], ...
-                     'facecolor', colorPosterior, ...
-                     'edgecolor', 'w');
-               end
-            end
-         end
-
-         H(1) = plot(-1, -1, 'o', ...
-            'markersize', 6, ...
-            'markerfacecolor', colorPrior, ...
-            'markeredgecolor', colorPrior);
-         H(2) = plot(-1, -1, 'o', ...
-            'markersize', 6, ...
-            'markerfacecolor', colorPosterior, ...
-            'markeredgecolor', colorPosterior);
-
-         L = legend(H, {'prior', 'posterior'}, ...
-            'fontsize', fontSize, ...
-            'box', 'off', ...
-            'location', 'northeast');
-         set(L, 'position', get(L, 'position') + [0.075 0.05 0 0]);
-
-           case 'clusterSavageDickeyEntropification'
-
-         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropification_tomicBays_jags';
-         fprintf('Loading pre-stored samples from file %s\n', fileName);
-         load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
-
-         % keepChains = [11 15 19]; % by visual inspection to ensure similarity follows higher-likelihood mode
-         % fields = fieldnames(chains);
-         % for i = 1:numel(fields)
-         %    chains.(fields{i}) = chains.(fields{i})(:, keepChains);
-         % end
-
-         % two-dimensional savage dickey analysis
-         gammaLo = 0; gammaHi = 3; gammaTick = 1; gammaEps = 0.052;
-         gammaE = (gammaLo-gammaEps/2):gammaEps:(gammaHi + gammaEps/2);
-         gammaC = gammaLo:gammaEps:gammaHi;
-
-         countPosterior = histcounts2(chains.gammaPM(:), chains.gammaPS(:), ...
-            gammaE, gammaE, ...
-            'normalization', 'probability');
-         count = histcounts(chains.gammaPrior(:), gammaE);
-         count(1) = 2*count(1);
-         count = count/sum(count);
-         countPrior = count'*count;
-
-         fontSize = 18;
-         scale = 0.5;
-         colorPrior = pantone.Custard;
-         colorPosterior = pantone.ClassicBlue;
-
-         F = figure; clf; hold on;
-         setFigure(F, [0.2 0.2 0.4 0.4], '');
-
-         % axis
-         set(gca, ...
-            'xlim'       , [gammaLo gammaHi]    , ...
-            'xtick'      , gammaLo:gammaTick:gammaHi    , ...
-            'ylim'       , [gammaLo gammaHi]    , ...
-            'ytick'      , gammaLo:gammaTick:gammaHi    , ...
-            'box'        , 'off'     , ...
-            'tickdir'    , 'out'     , ...
-            'layer'      , 'top'     , ...
-            'ticklength' , [0.02 0]  , ...
-            'clipping'   , 'off'     , ...
-            'fontsize'   , fontSize  );
-         axis square;
-         xlabel('$\gamma_{\mathrm{pm}}$', 'fontsize', fontSize+4, 'interp', 'latex');
-         ylabel('$\gamma_{\mathrm{ps}}$', 'fontsize', fontSize+4, 'interp', 'latex');
-         moveAxis(gca, [1 1 0.9 0.9], [0 0.025 0 0]);
-         Raxes(gca, 0.01, 0.01);
-
-         for i = 1:length(gammaC)
-            for j = 1:length(gammaC)
-               val = sqrt(countPrior(i, j))*scale;
-               rectangle('position', [gammaC(i)-val/2 gammaC(j)-val/2 val val], ...
-                  'curvature', [1 1], ...
-                  'facecolor', colorPrior, ...
-                  'edgecolor', colorPrior);
-               val = sqrt(countPosterior(i, j))*scale;
-               if val > 0
-                  rectangle('position', [gammaC(i)-val/2 gammaC(j)-val/2 val val], ...
-                     'curvature', [1 1], ...
-                     'facecolor', colorPosterior, ...
-                     'edgecolor', 'w');
-               end
-            end
-         end
-
-         H(1) = plot(-1, -1, 'o', ...
-            'markersize', 6, ...
-            'markerfacecolor', colorPrior, ...
-            'markeredgecolor', colorPrior);
-         H(2) = plot(-1, -1, 'o', ...
-            'markersize', 6, ...
-            'markerfacecolor', colorPosterior, ...
-            'markeredgecolor', colorPosterior);
-
-         L = legend(H, {'prior', 'posterior'}, ...
-            'fontsize', fontSize, ...
-            'box', 'off', ...
-            'location', 'northeast');
-         set(L, 'position', get(L, 'position') + [0.075 0.05 0 0]);
+      case 'clusterSavageDickeyEntropificationZoom'
+         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags';
+         chains = loadKeptClusterChains(fileName);
+         drawClusterSavageDickeyFigure(chains, pantone, [0 1], 0.25);
 
       case 'statisticalSummaries'
 
@@ -509,11 +275,11 @@ for analysisIdx = 1:numel(analysisList)
 
          % relative directory structure in github repository
          fileList = {...
-            '../perceptualReproduction/storage/perceptualReproduction_tomicBays_jags'; ...
-            '../memoryReproduction/storage/memoryReproduction_tomicBays_jags'; ...
+            '../perceptualReproduction/storage/perceptualReproductionMCMC_tomicBays2024_jags'; ...
+            '../memoryReproduction/storage/memoryReproductionMCMC_tomicBays2024_jags'; ...
             '../similarityComparison/storage/similarityComparison_tomicBays_jags'; ...
-            '../clusterRepresentation/storage/clusterRepresentation_tomicBays_jags'; ...
-            '../clusterRepresentation/storage/clusterRepresentationEntropification_tomicBays_jags'};
+            '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags'};
+         % plain cluster 2024 keep not ready (γ modes); add when Mode-A keep exists
 
          CIbounds = [2.5 97.5];
 
@@ -639,18 +405,13 @@ for analysisIdx = 1:numel(analysisList)
          bounds = prctile(chains.sigma(:), CIbounds);
          fprintf(fid, 'Posterior mean of sigma is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', sigma, bounds);
 
-         % CLUSTER
+         % CLUSTER + entropification (weekend keep already applied in mat.chains)
          scale = 4;
 
          fileName = fileList{4};
-         fprintf('\n----------\nLoading pre-stored samples from file %s\n', fileName);
-         load(sprintf('%s', fileName), 'chains');
-         keepChains = [11 15 19]; % by visual inspection to ensure similarity follows higher-likelihood mode
-         fields = fieldnames(chains);
-         for i = 1:numel(fields)
-            chains.(fields{i}) = chains.(fields{i})(:, keepChains);
-         end
-         fprintf(fid, '\n----------\nCluster Bayes Factor\n\n');
+         fprintf('\n----------\n');
+         chains = loadKeptClusterChains(fileName);
+         fprintf(fid, '\n----------\nCluster Bayes Factor (entropification)\n\n');
 
          Xposterior = [chains.gammaPS(:) chains.gammaPM(:)];
          Xprior = [chains.gammaPrior(:) chains.gammaPrior(randperm(length(chains.gammaPrior(:))))'];
@@ -708,73 +469,6 @@ for analysisIdx = 1:numel(analysisList)
          logBF = log(fPosterior) - log(fPrior);
          fprintf(fid, 'Via kernel density estimation (with bandwidth boosted by factor of %d to avoid -inf, the log BF for the perceptual-similarity null is %.0f\n', ...
             scale, logBF);
-
-
-         % CLUSTER
-         scale = 4;
-
-         fileName = fileList{5};
-         fprintf('\n----------\nLoading pre-stored samples from file %s\n', fileName);
-         load(sprintf('%s', fileName), 'chains');
-         fprintf(fid, '\n----------\nCluster Bayes Factor (entropification\n\n');
-
-         Xposterior = [chains.gammaPS(:) chains.gammaPM(:)];
-         Xprior = [chains.gammaPrior(:) chains.gammaPrior(randperm(length(chains.gammaPrior(:))))'];
-         Xcrit = [0 0];
-         n = size(Xposterior, 1);
-         d = size(Xposterior, 2);
-         sigma = std(Xposterior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPosterior = ksdensity(Xposterior, Xcrit, 'Bandwidth', bw*scale);
-
-         n = size(Xprior, 1);
-         d = size(Xprior, 2);
-         sigma = std(Xprior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPrior = ksdensity(Xprior, Xcrit, 'Bandwidth', bw*scale);
-
-         logBF = log(fPosterior) - log(fPrior);
-         fprintf(fid, 'Via kernel density estimation (with bandwidth boosted by factor of %d to avoid -inf), the log BF for the joint null is %.0f\n', ...
-            scale, logBF);
-
-         Xposterior = chains.gammaPM(:);
-         Xprior = chains.gammaPrior(:);
-         Xcrit = 0;
-         n = size(Xposterior, 1);
-         d = size(Xposterior, 2);
-         sigma = std(Xposterior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPosterior = ksdensity(Xposterior, Xcrit, 'Bandwidth', bw*scale);
-
-         n = size(Xprior, 1);
-         d = size(Xprior, 2);
-         sigma = std(Xprior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPrior = ksdensity(Xprior, Xcrit, 'Bandwidth', bw*scale);
-
-         logBF = log(fPosterior) - log(fPrior);
-         fprintf(fid, 'Via kernel density estimation (with bandwidth boosted by factor of %d to avoid -inf, the log BF for the perceptual-memory null is %.0f\n', ...
-            scale, logBF);
-
-         Xposterior = chains.gammaPS(:);
-         Xprior = chains.gammaPrior(:);
-         Xcrit = 0;
-         n = size(Xposterior, 1);
-         d = size(Xposterior, 2);
-         sigma = std(Xposterior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPosterior = ksdensity(Xposterior, Xcrit, 'Bandwidth', bw*scale);
-
-         n = size(Xprior, 1);
-         d = size(Xprior, 2);
-         sigma = std(Xprior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPrior = ksdensity(Xprior, Xcrit, 'Bandwidth', bw*scale);
-
-         logBF = log(fPosterior) - log(fPrior);
-         fprintf(fid, 'Via kernel density estimation (with bandwidth boosted by factor of %d to avoid -inf, the log BF for the perceptual-similarity null is %.0f\n', ...
-            scale, logBF);
-
 
          fclose(fid);
 
@@ -793,9 +487,9 @@ for analysisIdx = 1:numel(analysisList)
             binsC = lo:eps:hi;
             binsE = lo-eps/2:eps:hi+eps/2;
 
-            fileName = '../perceptualReproduction/storage/perceptualReproduction_tomicBays_jags';
+            fileName = '../perceptualReproduction/storage/perceptualReproductionMCMC_tomicBays2024_jags';
             fprintf('Loading pre-stored samples from file %s\n', fileName);
-            load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+            load(sprintf('%s', fileName), 'chains');
 
             dp.response = mod(dp.response, pi);
 
@@ -881,9 +575,10 @@ for analysisIdx = 1:numel(analysisList)
             binsC = lo:eps:hi;
             binsE = lo-eps/2:eps:hi+eps/2;
 
-            fileName = '../memoryReproduction/storage/memoryReproduction_tomicBays_jags';
+            % Needs yP; memoryReproductionMCMC omits posterior-predictive monitors.
+            fileName = '../memoryReproduction/storage/memoryReproduction_tomicBays2024_jags';
             fprintf('Loading pre-stored samples from file %s\n', fileName);
-            load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+            load(sprintf('%s', fileName), 'chains');
 
             dm.response = mod(dm.response, pi);
 
@@ -967,9 +662,10 @@ for analysisIdx = 1:numel(analysisList)
             binsC = lo:eps:hi;
             binsE = lo-eps/2:eps:hi+eps/2;
 
-            fileName = '../memoryReproduction/storage/memoryReproductionNoSwap_tomicBays_jags';
+            % Needs yP; NoSwap MCMC omits it. GAP until plain NoSwap 2024 is fit.
+            fileName = '../memoryReproduction/storage/memoryReproductionNoSwap_tomicBays2024_jags';
             fprintf('Loading pre-stored samples from file %s\n', fileName);
-            load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+            load(sprintf('%s', fileName), 'chains');
 
             dm.response = mod(dm.response, pi);
 
@@ -1045,7 +741,7 @@ for analysisIdx = 1:numel(analysisList)
 
          fileName = '../similarityComparison/storage/similarityComparison_tomicBays_jags';
          fprintf('Loading pre-stored samples from file %s\n', fileName);
-         load(sprintf('%s', fileName), 'chains', 'stats', 'diagnostics', 'info');
+         load(sprintf('%s', fileName), 'chains');
 
          if exist('storage/descriptiveAdequacySimilarityPreSave.mat', 'file')
 
@@ -1130,9 +826,16 @@ for analysisIdx = 1:numel(analysisList)
 
       case 'swapExamples'
 
-         fileName = '../memoryReproduction/storage/memoryReproduction_tomicBays_jags';
+         % Need trial-level xi. memoryReproductionMCMC deliberately omits xi/yP
+         % monitors; use the plain driver product that stores them.
+         fileName = '../memoryReproduction/storage/memoryReproduction_tomicBays2024_jags';
          fprintf('Loading pre-stored samples from file %s\n', fileName);
          load(sprintf('%s', fileName), 'chains');
+         if ~isfield(chains, 'xi_1_1')
+            error('drawFigures:swapExamplesNoXi', ...
+               ['%s has no xi_* fields (MCMC mats omit them). ', ...
+               'Re-run memoryReproduction.m on tomicBays2024.'], fileName);
+         end
 
          [keepChains, ~] = findKeepChains(chains.sigma_1, 2, 1.1);
          keepChains = setdiff(keepChains, 8);
@@ -1173,6 +876,114 @@ for analysisIdx = 1:numel(analysisList)
       print(sprintf('figures/%s.eps', analysisName), '-depsc');
    end
 
+end
+
+function chains = loadKeptClusterChains(fileName)
+%LOADKEPTCLUSTERCHAINS Return already-kept weekend/select chains.
+% Weekend mats store keepChains as indices into chainsAll, while chains is
+% already subset to those columns — do not re-index chains with keepChains.
+fprintf('Loading pre-stored samples from file %s\n', fileName);
+S = load(fileName);
+if isfield(S, 'keepChains') && ~isempty(S.keepChains)
+   fprintf('Using keepChains %s from mat\n', mat2str(S.keepChains));
+end
+if isfield(S, 'chains') && isstruct(S.chains) && ~isempty(fieldnames(S.chains))
+   chains = S.chains;
+   return
+end
+if isfield(S, 'chainsAll') && isfield(S, 'keepChains') && ~isempty(S.keepChains)
+   fn = fieldnames(S.chainsAll);
+   chains = struct();
+   for i = 1:numel(fn)
+      chains.(fn{i}) = S.chainsAll.(fn{i})(:, S.keepChains);
+   end
+   return
+end
+error('drawFigures:noChains', 'No kept chains in %s', fileName);
+end
+
+function drawClusterSavageDickeyFigure(chains, pantone, lim, gammaTick)
+%DRAWCLUSTERSAVAGEDICKEYFIGURE Prior/posterior γ scatter on lim = [lo hi].
+gammaLo = lim(1);
+gammaHi = lim(2);
+nBin = 40;
+gammaE = linspace(gammaLo, gammaHi, nBin + 1);
+gammaC = (gammaE(1:end-1) + gammaE(2:end)) / 2;
+
+countPosterior = histcounts2(chains.gammaPM(:), chains.gammaPS(:), ...
+   gammaE, gammaE, 'normalization', 'probability');
+count = histcounts(chains.gammaPrior(:), gammaE);
+if ~isempty(count) && sum(count) > 0
+   count(1) = 2 * count(1);
+   count = count / sum(count);
+else
+   count = ones(size(gammaC)) / numel(gammaC);
+end
+countPrior = count' * count;
+
+fontSize = 18;
+scale = 0.5 * (gammaHi - gammaLo) / 3;
+colorPrior = pantone.Custard;
+colorPosterior = pantone.ClassicBlue;
+
+F = figure; clf; hold on;
+setFigure(F, [0.2 0.2 0.4 0.4], '');
+
+set(gca, ...
+   'xlim'       , [gammaLo gammaHi]    , ...
+   'xtick'      , gammaLo:gammaTick:gammaHi    , ...
+   'ylim'       , [gammaLo gammaHi]    , ...
+   'ytick'      , gammaLo:gammaTick:gammaHi    , ...
+   'box'        , 'off'     , ...
+   'tickdir'    , 'out'     , ...
+   'layer'      , 'top'     , ...
+   'ticklength' , [0.02 0]  , ...
+   'clipping'   , 'off'     , ...
+   'fontsize'   , fontSize  );
+axis square;
+xlabel('$\gamma_{\mathrm{pm}}$', 'fontsize', fontSize+4, 'interp', 'latex');
+ylabel('$\gamma_{\mathrm{ps}}$', 'fontsize', fontSize+4, 'interp', 'latex');
+moveAxis(gca, [1 1 0.9 0.9], [0 0.025 0 0]);
+Raxes(gca, 0.01, 0.01);
+
+% Posterior first, prior on top so prior remains visible where they overlap.
+for i = 1:length(gammaC)
+   for j = 1:length(gammaC)
+      val = sqrt(countPosterior(i, j)) * scale;
+      if val > 0
+         rectangle('position', [gammaC(i)-val/2 gammaC(j)-val/2 val val], ...
+            'curvature', [1 1], ...
+            'facecolor', colorPosterior, ...
+            'edgecolor', colorPosterior);
+      end
+   end
+end
+for i = 1:length(gammaC)
+   for j = 1:length(gammaC)
+      val = sqrt(countPrior(i, j)) * scale;
+      if val > 0
+         rectangle('position', [gammaC(i)-val/2 gammaC(j)-val/2 val val], ...
+            'curvature', [1 1], ...
+            'facecolor', colorPrior, ...
+            'edgecolor', colorPrior);
+      end
+   end
+end
+
+H(1) = plot(-1, -1, 'o', ...
+   'markersize', 6, ...
+   'markerfacecolor', colorPrior, ...
+   'markeredgecolor', colorPrior);
+H(2) = plot(-1, -1, 'o', ...
+   'markersize', 6, ...
+   'markerfacecolor', colorPosterior, ...
+   'markeredgecolor', colorPosterior);
+
+L = legend(H, {'prior', 'posterior'}, ...
+   'fontsize', fontSize, ...
+   'box', 'off', ...
+   'location', 'northeast');
+set(L, 'position', get(L, 'position') + [0.075 0.05 0 0]);
 end
 
 function [muMean, bounds] = summarizeHalfCircle(vals, CI)
