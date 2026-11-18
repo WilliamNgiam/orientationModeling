@@ -14,8 +14,7 @@ jonesPewsey/
 ├── memoryReproductionNoSwapJP.m
 ├── similarityComparisonJP.m
 ├── separateSetSize/               # each set size has its own μ
-├── figures/
-└── storage/                        # gitignored MCMC output
+└── figures/
 ```
 
 ## Build the module
@@ -28,7 +27,7 @@ MATLAB drivers set `JAGS_LIBS` to `./jags-jonesPewsey` and load `cfg.modules = {
 
 ## Drivers
 
-Run from this folder (each script `cd`s to itself). `preLoad = true` loads cached `storage/*.mat` when present.
+Run from this folder (each script `cd`s to itself). `preLoad = true` reuses a previous fit when available.
 
 | Driver | Model |
 |--------|--------|

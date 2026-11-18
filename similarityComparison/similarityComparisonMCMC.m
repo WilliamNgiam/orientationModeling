@@ -7,7 +7,7 @@
 %
 % Storage: storage/similarityComparisonMCMC_tomicBays2024_jags.mat
 % (does not overwrite similarityComparison_tomicBays2024_jags.mat)
-% Similarity ds is unchanged across parses; tag is tomicBays2024.
+% Storage tag: tomicBays2024.
 
 clear; close all;
 preLoad = true;

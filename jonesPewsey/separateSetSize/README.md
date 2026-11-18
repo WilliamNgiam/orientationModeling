@@ -33,13 +33,7 @@ Each driver loops over set sizes 3 then 6.
 
 ## Outputs
 
-Written under this folder:
-
-- `storage/noSwap_setSize3_tomicBays_jags.mat`
-- `storage/noSwap_setSize6_tomicBays_jags.mat`
-- `storage/withSwap_setSize3_tomicBays_jags.mat`
-- `storage/withSwap_setSize6_tomicBays_jags.mat`
-- `figures/tomicBays_noSwap_setSize3.png` (and `.eps`, plus set size 6 / withSwap analogues)
+Figures under `figures/` (e.g. `tomicBays_noSwap_setSize3.png` / `.eps`, plus set size 6 and withSwap analogues).
 
 ## Requirements
 

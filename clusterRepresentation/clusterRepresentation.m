@@ -158,7 +158,7 @@ for dataIdx = 1:numel(dataList)
    % when both gamma modes are pooled. Prefer Mode A (near-zero gammaPM) when
    % choosing chains for Savage–Dickey and paper figures; do not average modes.
    %
-   % keepChains = [11 15 19]; % legacy visual keep on mis-parsed tomicBays
+   % keepChains = [11 15 19]; % legacy visual keep
    % fields = fieldnames(chains);
    % for i = 1:numel(fields)
    %    chains.(fields{i}) = chains.(fields{i})(:, keepChains);

@@ -4,7 +4,7 @@ On each trial, two pairs of oriented line stimuli are presented. The response is
 
 `similarityComparison_jags.txt` implements the similarity comparison model as a graphical model in JAGS. There is no need for the latent mixture approach to implementing the circular normal, because ...
 
-`similarityComparison.m` (and entrop / MCMC / von Mises variants) apply the model to data. Default data is **`tomicBays2024`** from [Tomic & Bays (2024)](https://psycnet.apa.org/record/2023-21056-001). Similarity `ds` is unchanged across parses, so storage uses `*_tomicBays2024_*` tags. See [`../MCMC.md`](../MCMC.md).
+`similarityComparison.m` (and entrop / MCMC / von Mises variants) apply the model to data. Default data is **`tomicBays2024`** from [Tomic & Bays (2024)](https://psycnet.apa.org/record/2023-21056-001). See [`../MCMC.md`](../MCMC.md).
 
 A trial-subsetting variant of the driver lives in `old/similarityComparison_withSubsetting.m` (see `old/README.md`).
 

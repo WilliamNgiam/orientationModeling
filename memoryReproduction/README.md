@@ -6,7 +6,7 @@ On each trial 3 or 6 oriented line stimuli are presented then removed. One is th
 
 `memoryReproductionNoSwap_jags.txt` implements a reduced version of the model that removes the swap error process. This is effectively the perceptual reproduction model.
 
-`memoryReproduction.m` and `memoryReproductionNoSwap.m` (plus MCMC / von Mises variants) apply the models to data. Default `dataList` entry is `tomicBaysMemory2024` → `../data/tomicBays2024.mat` from `data/parse_tomicBays2024.m` (divide memory target/response by 2 before `mod`). Empirical data: [Tomic & Bays](https://psycnet.apa.org/record/2023-21056-001). See [`../MCMC.md`](../MCMC.md) for sampling schemes.
+`memoryReproduction.m` and `memoryReproductionNoSwap.m` (plus MCMC / von Mises variants) apply the models to data. Default `dataList` entry is `tomicBaysMemory2024` → `../data/tomicBays2024.mat`. Empirical data: [Tomic & Bays](https://psycnet.apa.org/record/2023-21056-001). See [`../data/README.md`](../data/README.md) and [`../MCMC.md`](../MCMC.md).
 
 The JAGS script implements the circular normal distribution using a latent variable that allows any stimulus location to be shifted by +pi or -pi. We attempted to use the von Mises module [here](https://github.com/yeagle/jags-vonmises) for JAGS, but believe it does not work well. It did not produce sensible results even for very simple inference problems. We would be pleased to hear from anybody who is able to provide a working von Mises implementation of the model in JAGS.
 

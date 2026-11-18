@@ -7,7 +7,7 @@ This repository contains the MATLAB and JAGS code used to fit and compare genera
 
 Empirical data are from [Tomic & Bays (2024)](https://psycnet.apa.org/record/2023-21056-001), packaged as **`data/tomicBays2024.mat`** (see `data/README.md`). Each task is implemented with a wrap-copy generative model and, for several tasks, an alternative von Mises generative model—each with its own JAGS specification (`.txt`) and MATLAB driver (`.m`).
 
-Models write MCMC output under per-task `storage/` (gitignored), task figures under `figures/`, and paper-level analyses under `analysis/`.
+Task figures land under each task’s `figures/`; paper-level analyses under `analysis/`.
 
 ## Requirements
 
@@ -24,9 +24,13 @@ Add the repo root and `supportingFiles/` to the MATLAB path, or run drivers from
 |----------|----------|
 | `data/tomicBays2024.mat` | **Canonical** perceptual (`dp`), memory (`dm`), and similarity (`ds`) structs |
 | `data/*.csv` | Raw task exports from the authors |
-| `data/parse_tomicBays2024.m` | Builds `tomicBays2024.mat` from CSV (+ `ds` from a local parse_1 product) |
+| `data/parse_tomicBays2024.m` | Builds `tomicBays2024.mat` from CSV |
 
-All task scripts load `tomicBays2024` (via aliases such as `tomicBaysPerception2024`). See `data/README.md` for the CSV angle convention and the discarded mis-parsed `tomicBays` packaging. MCMC chain counts, burn-in, thinning, and keep rules for each analysis are in [`MCMC.md`](MCMC.md).
+All task scripts load `tomicBays2024` (via aliases such as `tomicBaysPerception2024`). See `data/README.md` for the CSV angle convention.
+
+### Sampling
+
+Plain drivers (e.g. `perceptualReproduction.m`) use a fixed JAGS schedule (set chains, burn-in, samples, and thin). **`*MCMC.m` drivers** use a more sophisticated scheme in `supportingFiles/orientationMcmcProtocol.m`: sampling in chunks with wrap alignment of location parameters, restart of lost chains, and a stop rule based on R̂ and effective sample size. Paper analyses prefer those MCMC products when available. Full schedules and keep rules are in [`MCMC.md`](MCMC.md).
 
 ## Repository layout
 
@@ -47,8 +51,7 @@ orientationModeling/
 Each task folder typically contains:
 
 - `*_jags.txt` — JAGS model definition  
-- `*.m` — MATLAB driver (`preLoad` loads cached `storage/*.mat` when available)  
-- `storage/` — Saved chains (gitignored; produced by fitting)  
+- `*.m` — MATLAB driver (`preLoad` reuses a previous fit when available)  
 - `figures/` — Model-specific output figures  
 
 ### Wrap-copy generative models
@@ -120,11 +123,11 @@ cd /path/to/orientationModeling/perceptualReproduction
 perceptualReproduction          % set preLoad = false in script to refit
 ```
 
-Equivalent entry points exist in each task folder. After a successful run, expect `storage/<modelName>_tomicBays2024_jags.mat` and figures under `figures/`.
+Equivalent entry points exist in each task folder. After a successful run, figures appear under `figures/`.
 
 ### 2. Fit joint-task models (optional standalone)
 
-`commonRepresentation` and `clusterRepresentation` fit **all three tasks in one JAGS run**. They load `data/tomicBays2024.mat` and write their own `storage/*.mat` files—they do **not** read posteriors from the single-task fits.
+`commonRepresentation` and `clusterRepresentation` fit **all three tasks in one JAGS run**. They load `data/tomicBays2024.mat` and do **not** read posteriors from the single-task fits.
 
 ```matlab
 cd ../commonRepresentation
@@ -156,12 +159,12 @@ drawFigures   % edit analysisList at top of script to enable analyses
 | `fourScatter` | Perceptual, memory, similarity, common representation scatters |
 | `clusterSavageDickeyEntropification` | Savage–Dickey for cluster+entrop γ |
 | `statisticalSummaries` | Text summaries under `analysis/results/` |
-| `twoRepresentations` / `swapExamples` | Paper / exploratory panels |
+| `swapExamples` | Swap-error example trials |
 | `memoryNoSwap` | SI: no-swap memory μ scatter (`memoryReproductionNoSwapMCMC`) |
 | `descriptiveAdequacy*` | SI posterior-predictive checks (commented; NoSwap needs plain yP mat) |
 | `clusterSavageDickey` | Plain-cluster SD (DIC Mode A via `loadModeAClusterChains` on main cluster pool) |
 
-Outputs go to `analysis/figures/` (and `analysis/results/` for summaries). Most analyses load precomputed chains from `../<task>/storage/`.
+Outputs go to `analysis/figures/` (and `analysis/results/` for summaries). Most analyses load precomputed task-model chains.
 
 | Script | Purpose |
 |--------|---------|
@@ -169,13 +172,9 @@ Outputs go to `analysis/figures/` (and `analysis/results/` for summaries). Most 
 
 ## Known gaps (tomicBays2024)
 
-- **plain clusterRepresentation** on 2024: γ multimodal; paper SD uses Mode A from main cluster pool rather than a single short-driver keep. Cluster+entrop weekend keep is available.
-- **von Mises / Jones–Pewsey** on 2024: drivers updated; refits may still be needed. (Similarity von Mises / mixture mats were retagged `*_tomicBays2024_*` because `ds` is unchanged across parses.)
+- **plain clusterRepresentation** on 2024: γ multimodal; paper SD uses Mode A from the main cluster pool. Cluster+entropification keep is available.
+- **von Mises / Jones–Pewsey** on 2024: drivers updated; refits may still be needed.
 - **similarityComparisonMCMC**: no stored MCMC product yet (plain/entrop/vonMises/mixture `*_tomicBays2024_*` mats are available).
-
-## Gitignored paths
-
-`.gitignore` excludes `**/storage/`, `**/tmp/`, mis-parsed `data/tomicBays.mat` / `parse_1.m`, historical `data/tomicBays_v2.mat`, ad-hoc weekend/DIC runners, and `analysis/drawFigures_legacyTomicBays.m`. Clone the repo and run drivers to regenerate MCMC files locally, or copy `storage/*.mat` from a completed analysis environment.
 
 ## Citation
 
