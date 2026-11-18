@@ -1,12 +1,13 @@
 % figures and non-modeling analyses for Tomic & Bays (canonical parse).
 %
-% DATA: tomicBays2024 (parse_tomicBays2024). Legacy mis-parsed tomicBays is used only as a
-% temporary placeholder for commonRepresentation until the 2024 common fit finishes.
+% DATA: tomicBays2024 (parse_tomicBays2024).
 %
-% GAPS (as of tidy): no similarityComparison_*_tomicBays2024 storage yet;
-% plain clusterRepresentation on 2024 has no converged keep set (see mode/DIC note
-% in clusterRepresentation.m). Cluster+entrop weekend keep is available.
-% Paper analyses are active; SI descriptiveAdequacy* are commented (uncomment to regenerate).
+% Similarity ds is unchanged across parses → similarityComparison storage
+% tagged tomicBays2024. Common/cluster paper products use main storage tags
+% (no Weekend in filenames).
+% Plain cluster SD: DIC Mode A (~0, 1.5) via loadModeAClusterChains.
+% Entrop cluster SD: keep product; zoom axes [0,1].
+% SI descriptiveAdequacy* are commented (uncomment to regenerate).
 
 clear;
 close all;
@@ -15,20 +16,24 @@ printFigures = true;
 
 analysisList = {...
    % --- paper ---
-   %'fourScatter'; ...
-   % 'clusterSavageDickey'; ...      % full [0,3]; needs plain-cluster 2024 Mode-A keep
-   % 'clusterSavageDickeyZoom'; ...  % zoom [0,1]; same dependency
-   'clusterSavageDickeyEntropification'; ...      % full [0,3]
-   'clusterSavageDickeyEntropificationZoom'; ... % zoom [0,1]
-   % 'statisticalSummaries'; ...
-   % 'twoRepresentations'; ...
-   % 'swapExamples'; ...
-   % --- supplementary (SI); uncomment to regenerate ---
+   'fourScatter'; ...
+   'clusterSavageDickey'; ...      % full [0,3]; DIC Mode A (~0, 1.5) + R̂ keep
+   'clusterSavageDickeyEntropification'; ...  % zoom [0,1]
+   'statisticalSummaries'; ...
+   'twoRepresentations'; ...
+   'swapExamples'; ...
+   % --- supplementary (SI) ---
+   'memoryNoSwap'; ...                 % μ scatter, no-swap memory MCMC
    % 'descriptiveAdequacyPerceptual'; ...
    % 'descriptiveAdequacyMemory'; ...
-   % 'descriptiveAdequacyMemoryNoSwap'; ...
+   % 'descriptiveAdequacyMemoryNoSwap'; ...  % needs plain NoSwap yP mat
    % 'descriptiveAdequacySimilarity'; ...
    };
+
+
+
+
+
 
 % load data
 dataDir = '../data/';
@@ -46,14 +51,13 @@ for analysisIdx = 1:numel(analysisList)
    switch analysisName
       case 'fourScatter'
 
-         % relative directory structure in github repository
-         % perceptual/memory: tomicBays2024 MCMC; similarity: GAP (legacy mat);
-         % common: PLACEHOLDER legacy mis-parsed fit until 2024 common finishes.
+         % perceptual/memory/similarity/common: tomicBays2024
+         % (common keep [1 3 5 8 10 11 12]).
          fileList = {...
             '../perceptualReproduction/storage/perceptualReproductionMCMC_tomicBays2024_jags'; ...
             '../memoryReproduction/storage/memoryReproductionMCMC_tomicBays2024_jags'; ...
-            '../similarityComparison/storage/similarityComparison_tomicBays_jags'; ...
-            '../commonRepresentation/storage/commonRepresentation_tomicBays_jags'};
+            '../similarityComparison/storage/similarityComparison_tomicBays2024_jags'; ...
+            '../commonRepresentation/storage/commonRepresentation_tomicBays2024_jags'};
 
          fontSize = 20;
          CIbounds = [2.5 97.5];
@@ -71,13 +75,12 @@ for analysisIdx = 1:numel(analysisList)
             % Load chains only (avoids stale function-handle warnings from inits).
             load(sprintf('%s', fileName), 'chains');
 
-            % just keep converged chains
+            % just keep converged chains (weekend common is already subset)
             switch modelIdx
                case 1 % perceptual
                   [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
                case 2 % memory
                   [keepChains, rHat] = findKeepChains(chains.sigma_1, 2, 1.1);
-                  keepChains = setdiff(keepChains, 8); % remove 8 via visual inspection of mu_6
                case 3 % similarity
                   [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1);
                case 4 % common
@@ -171,7 +174,7 @@ for analysisIdx = 1:numel(analysisList)
          % relative directory structure in github repository
          fileList = {...
             '../perceptualReproduction/storage/perceptualReproductionMCMC_tomicBays2024_jags'; ...
-            '../similarityComparison/storage/similarityComparison_tomicBays_jags'; ...
+            '../similarityComparison/storage/similarityComparison_tomicBays2024_jags'; ...
             };
 
          fontSize = 20;
@@ -247,39 +250,36 @@ for analysisIdx = 1:numel(analysisList)
 
 
       case 'clusterSavageDickey'
-         % PLACEHOLDER until plain-cluster 2024 Mode-A keep exists.
-         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags';
-         chains = loadKeptClusterChains(fileName);
+         % DIC Mode A (~0, 1.5) with R̂-ok subset (prefer large pools first).
+         chains = loadModeAClusterChains({ ...
+            '../clusterRepresentation/storage/clusterRepresentation_tomicBays2024_jags', ...
+            '../clusterRepresentation/storage/clusterRepresentationSelectMCMC_tomicBays2024_jags'});
          drawClusterSavageDickeyFigure(chains, pantone, [0 3], 1);
-
-      case 'clusterSavageDickeyZoom'
-         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags';
-         chains = loadKeptClusterChains(fileName);
-         drawClusterSavageDickeyFigure(chains, pantone, [0 1], 0.25);
 
       case 'clusterSavageDickeyEntropification'
-         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags';
-         chains = loadKeptClusterChains(fileName);
-         drawClusterSavageDickeyFigure(chains, pantone, [0 3], 1);
-
-      case 'clusterSavageDickeyEntropificationZoom'
-         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags';
-         chains = loadKeptClusterChains(fileName);
-         drawClusterSavageDickeyFigure(chains, pantone, [0 1], 0.25);
+         % Entrop keep is the paper set (often not Mode A); zoom axes [0,1].
+         fileName = '../clusterRepresentation/storage/clusterRepresentationEntropification_tomicBays2024_jags';
+         fprintf('Loading keep from %s\n', fileName);
+         S = load(fileName, 'chains', 'keepChains');
+         chains = S.chains;
+         if isfield(S, 'keepChains')
+            fprintf('  keep=%s nCh=%d\n', mat2str(S.keepChains), size(chains.gammaPM, 2));
+         end
+         drawClusterSavageDickeyFigure(chains, pantone, [0 1], 0.5);
 
       case 'statisticalSummaries'
 
          fid = fopen('results/statisticalSummaries.txt', 'w');
 
-         printFigures = false;
+         % Text-only analysis (does not change printFigures for later cases).
 
          % relative directory structure in github repository
          fileList = {...
             '../perceptualReproduction/storage/perceptualReproductionMCMC_tomicBays2024_jags'; ...
             '../memoryReproduction/storage/memoryReproductionMCMC_tomicBays2024_jags'; ...
-            '../similarityComparison/storage/similarityComparison_tomicBays_jags'; ...
-            '../clusterRepresentation/storage/clusterRepresentationEntropificationWeekend_tomicBays2024_jags'};
-         % plain cluster 2024 keep not ready (γ modes); add when Mode-A keep exists
+            '../similarityComparison/storage/similarityComparison_tomicBays2024_jags'; ...
+            '../clusterRepresentation/storage/clusterRepresentationSelectMCMC_tomicBays2024_jags'};
+         % Cluster BF uses DIC Mode A (~0, 1.5); see loadModeAClusterChains.
 
          CIbounds = [2.5 97.5];
 
@@ -303,7 +303,6 @@ for analysisIdx = 1:numel(analysisList)
          fprintf('\n----------\nLoading pre-stored samples from file %s\n', fileName);
          load(sprintf('%s', fileName), 'chains');
          [keepChains, rHat] = findKeepChains(chains.sigma_1, 2, 1.1);
-         keepChains = setdiff(keepChains, 8); % remove 8 via visual inspection of mu_6
          fields = fieldnames(chains);
          for i = 1:numel(fields)
             chains.(fields{i}) = chains.(fields{i})(:, keepChains);
@@ -405,13 +404,14 @@ for analysisIdx = 1:numel(analysisList)
          bounds = prctile(chains.sigma(:), CIbounds);
          fprintf(fid, 'Posterior mean of sigma is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', sigma, bounds);
 
-         % CLUSTER + entropification (weekend keep already applied in mat.chains)
+         % CLUSTER (DIC Mode A; prefer large merged pool first)
          scale = 4;
 
-         fileName = fileList{4};
          fprintf('\n----------\n');
-         chains = loadKeptClusterChains(fileName);
-         fprintf(fid, '\n----------\nCluster Bayes Factor (entropification)\n\n');
+         chains = loadModeAClusterChains({ ...
+            '../clusterRepresentation/storage/clusterRepresentation_tomicBays2024_jags', ...
+            fileList{4}});
+         fprintf(fid, '\n----------\nCluster Bayes Factor (Mode A / DIC-preferred)\n\n');
 
          Xposterior = [chains.gammaPS(:) chains.gammaPM(:)];
          Xprior = [chains.gammaPrior(:) chains.gammaPrior(randperm(length(chains.gammaPrior(:))))'];
@@ -565,7 +565,7 @@ for analysisIdx = 1:numel(analysisList)
 
          if exist('storage/descriptiveAdequacyMemoryPreSave.mat', 'file')
 
-            load('storage/descriptiveAdequacyMemoryPreSave', 'credInterval', 'binsC');
+            load('storage/descriptiveAdequacyMemoryPreSave', 'credInterval', 'mn', 'binsC');
 
          else
 
@@ -604,7 +604,7 @@ for analysisIdx = 1:numel(analysisList)
                credInterval(i, :) = prctile(vals, CI);
             end
 
-            save('storage/descriptiveAdequacyMemoryPreSave', 'credInterval', 'binsC');
+            save('storage/descriptiveAdequacyMemoryPreSave', 'mn', 'credInterval', 'binsC');
          end
 
          fontSize = 18;
@@ -648,11 +648,80 @@ for analysisIdx = 1:numel(analysisList)
                'markeredgecolor', pantone.ClassicBlue);
          end
 
+      case 'memoryNoSwap'
+         % SI: physical vs psychological μ under the no-swap memory model.
+         fileName = '../memoryReproduction/storage/memoryReproductionNoSwapMCMC_tomicBays2024_jags';
+         fprintf('Loading pre-stored samples from file %s\n', fileName);
+         load(sprintf('%s', fileName), 'chains');
+         [keepChains, ~] = findKeepChains(chains.sigma_1, 2, 1.1);
+         fields = fieldnames(chains);
+         for i = 1:numel(fields)
+            chains.(fields{i}) = chains.(fields{i})(:, keepChains);
+         end
+
+         fontSize = 20;
+         CIbounds = [2.5 97.5];
+         mu = nan(dm.nStimuli, 1);
+         muBounds = nan(dm.nStimuli, 2);
+         for idx = 1:dm.nStimuli
+            vals = chains.(sprintf('mu_%d', idx))(:);
+            [mu(idx), muBounds(idx, :)] = summarizeHalfCircle(vals, CIbounds);
+         end
+         muTruth = dp.stimuli;
+
+         F = figure; clf; hold on;
+         setFigure(F, [0.2 0.2 0.35 0.5], '');
+         set(gca, ...
+            'xlim'       , [0 pi]    , ...
+            'xtick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
+            'xticklabelrot', 0, ...
+            'xticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
+            'ylim'       , [0 pi]    , ...
+            'ytick'      , [0 pi/4 pi/2 3*pi/4 pi]   , ...
+            'yticklabel' , {'$0$', '$\frac{\pi}{4}$', '$\frac{\pi}{2}$', '$\frac{3\pi}{4}$', '$\pi$'}, ...
+            'ticklabelinterpreter', 'latex', ...
+            'box'        , 'off'     , ...
+            'tickdir'    , 'out'     , ...
+            'layer'      , 'top'     , ...
+            'ticklength' , [0.02 0]  , ...
+            'clipping'   , 'off'     , ...
+            'fontsize'   , fontSize  );
+         axis square;
+         xlabel('Physical', 'fontsize', fontSize);
+         ylabel('Psychological', 'fontsize', fontSize);
+         text(0, pi, 'memory (no swap)', ...
+            'fontsize', fontSize-4, ...
+            'fontweight', 'normal', ...
+            'vert', 'bot', 'hor', 'lef');
+         moveAxis(gca, [1 1 0.95 0.95], [0 0.025 0 0]);
+         Raxes(gca, 0.02, 0.01);
+
+         for i = pi/4:pi/4:3*pi/4
+            plot([i i], [0 pi], '-', 'color', pantone.GlacierGray);
+            plot([0 pi], [i i], '-', 'color', pantone.GlacierGray);
+         end
+         for idx = 1:dp.nStimuli
+            if muBounds(idx, 1) > muBounds(idx, 2)
+               plot(muTruth(idx) * [1 1], [0 muBounds(idx, 2)], '-', ...
+                  'color', pantone.ClassicBlue, 'linewidth', 1);
+               plot(muTruth(idx) * [1 1], [muBounds(idx, 1) pi], '-', ...
+                  'color', pantone.ClassicBlue, 'linewidth', 1);
+            else
+               plot(muTruth(idx) * [1 1], muBounds(idx, :), '-', ...
+                  'color', pantone.ClassicBlue, 'linewidth', 1);
+            end
+            plot(muTruth(idx), mu(idx), 'o', ...
+               'markerfacecolor', pantone.ClassicBlue, ...
+               'markeredgecolor', 'w', 'linewidth', 0.5, 'markersize', 4);
+         end
+         plot([0 pi], [0 pi], '-', ...
+            'color', pantone.AuroraRed, 'linewidth', 0.5);
+
       case 'descriptiveAdequacyMemoryNoSwap'
 
          if exist('storage/descriptiveAdequacyMemoryNoSwapPreSave.mat', 'file')
 
-            load('storage/descriptiveAdequacyMemoryNoSwapPreSave', 'credInterval', 'binsC');
+            load('storage/descriptiveAdequacyMemoryNoSwapPreSave', 'credInterval', 'mn', 'binsC');
 
          else
 
@@ -662,8 +731,14 @@ for analysisIdx = 1:numel(analysisList)
             binsC = lo:eps:hi;
             binsE = lo-eps/2:eps:hi+eps/2;
 
-            % Needs yP; NoSwap MCMC omits it. GAP until plain NoSwap 2024 is fit.
+            % Needs yP; NoSwap MCMC omits it — run memoryReproductionNoSwap.m on 2024.
             fileName = '../memoryReproduction/storage/memoryReproductionNoSwap_tomicBays2024_jags';
+            if ~isfile([fileName '.mat'])
+               error('drawFigures:noSwapYPmissing', ...
+                  ['Missing %s (needs yP). Use SI case ''memoryNoSwap'' for the ', ...
+                  'μ scatter from NoSwap MCMC, or fit memoryReproductionNoSwap.m.'], ...
+                  [fileName '.mat']);
+            end
             fprintf('Loading pre-stored samples from file %s\n', fileName);
             load(sprintf('%s', fileName), 'chains');
 
@@ -691,7 +766,7 @@ for analysisIdx = 1:numel(analysisList)
                credInterval(i, :) = prctile(vals, CI);
             end
 
-            save('storage/descriptiveAdequacyMemoryNoSwapPreSave', 'credInterval', 'binsC');
+            save('storage/descriptiveAdequacyMemoryNoSwapPreSave', 'mn', 'credInterval', 'binsC');
          end
 
          fontSize = 18;
@@ -739,7 +814,7 @@ for analysisIdx = 1:numel(analysisList)
 
          nReps = 1e3;
 
-         fileName = '../similarityComparison/storage/similarityComparison_tomicBays_jags';
+         fileName = '../similarityComparison/storage/similarityComparison_tomicBays2024_jags';
          fprintf('Loading pre-stored samples from file %s\n', fileName);
          load(sprintf('%s', fileName), 'chains');
 
@@ -838,7 +913,6 @@ for analysisIdx = 1:numel(analysisList)
          end
 
          [keepChains, ~] = findKeepChains(chains.sigma_1, 2, 1.1);
-         keepChains = setdiff(keepChains, 8);
          fields = fieldnames(chains);
          for i = 1:numel(fields)
             chains.(fields{i}) = chains.(fields{i})(:, keepChains);
@@ -867,8 +941,8 @@ for analysisIdx = 1:numel(analysisList)
 
    end
 
-   % print
-   if printFigures
+   % print (skip text-only analyses with no figure)
+   if printFigures && ~strcmp(analysisName, 'statisticalSummaries')
       if ~isfolder('figures')
          !mkdir figures
       end
@@ -878,28 +952,170 @@ for analysisIdx = 1:numel(analysisList)
 
 end
 
-function chains = loadKeptClusterChains(fileName)
-%LOADKEPTCLUSTERCHAINS Return already-kept weekend/select chains.
-% Weekend mats store keepChains as indices into chainsAll, while chains is
-% already subset to those columns — do not re-index chains with keepChains.
-fprintf('Loading pre-stored samples from file %s\n', fileName);
-S = load(fileName);
-if isfield(S, 'keepChains') && ~isempty(S.keepChains)
-   fprintf('Using keepChains %s from mat\n', mat2str(S.keepChains));
+function chains = loadModeAClusterChains(fileNames)
+%LOADMODEACLUSTERCHAINS Converged DIC Mode A chains ≈ (0, 1.5).
+%
+% Mode A region (chain medians): gPM < 0.8 and gPS in [0.8, 2.2].
+% Then pick the largest subset with R̂ ≤ 1.1 on gammaPM/gammaPS/gammaPrior
+% (same idea as selectClusterModeChains). Does not use muS-band keep alone.
+% fileNames: char/string or cell of candidates. Falls back to DIC Mode-A
+% seeded run only if that subset also passes R̂.
+
+% Mode A box matches countModeAKeep / merged-pool scan (≈(0,1.5)).
+% Main cluster pool has ~62 chains here vs ~57 at Mode B (≈(2,1.5)); R̂≤1.05
+% finds none, but R̂≤1.1 yields a keep of 5 near (0.12, 1.48).
+modeA_pmMax = 0.8;
+modeA_psLo = 0.8;
+modeA_psHi = 2.2;
+minKeep = 4;
+maxKeep = 8;
+rHatMax = 1.1;
+rHatFields = {'gammaPM', 'gammaPS', 'gammaPrior'};
+modeA_center = [0.1, 1.5];
+
+if ischar(fileNames) || isstring(fileNames)
+   fileNames = {char(fileNames)};
 end
-if isfield(S, 'chains') && isstruct(S.chains) && ~isempty(fieldnames(S.chains))
-   chains = S.chains;
-   return
-end
-if isfield(S, 'chainsAll') && isfield(S, 'keepChains') && ~isempty(S.keepChains)
-   fn = fieldnames(S.chainsAll);
-   chains = struct();
-   for i = 1:numel(fn)
-      chains.(fn{i}) = S.chainsAll.(fn{i})(:, S.keepChains);
+
+for f = 1:numel(fileNames)
+   fileName = fileNames{f};
+   matPath = fileName;
+   if ~endsWith(matPath, '.mat')
+      matPath = [matPath '.mat']; %#ok<AGROW>
    end
+   if ~isfile(matPath)
+      fprintf('Skipping missing %s\n', matPath);
+      continue
+   end
+   fprintf(['Loading %s\n  Mode A region gPM<%.1f, gPS in [%.1f, %.1f]; ', ...
+      'then Rhat<=%.2f, keep %d-%d\n'], ...
+      matPath, modeA_pmMax, modeA_psLo, modeA_psHi, rHatMax, minKeep, maxKeep);
+   S = load(matPath);
+
+   src = [];
+   if isfield(S, 'chainsAll') && isstruct(S.chainsAll) ...
+         && isfield(S.chainsAll, 'gammaPM')
+      src = S.chainsAll;
+   elseif isfield(S, 'chains') && isstruct(S.chains) ...
+         && isfield(S.chains, 'gammaPM')
+      src = S.chains;
+   end
+   if isempty(src)
+      continue
+   end
+
+   mPM = median(src.gammaPM, 1);
+   mPS = median(src.gammaPS, 1);
+   modeA = find(mPM < modeA_pmMax & mPS >= modeA_psLo & mPS <= modeA_psHi);
+   fprintf('  Mode A candidates among %d chains: %s\n', ...
+      size(src.gammaPM, 2), mat2str(modeA));
+   if numel(modeA) < minKeep
+      fprintf('  Too few Mode A chains; trying next source.\n');
+      continue
+   end
+   % Prefer chains closest to DIC Mode A center before R̂ search.
+   dCenter = (mPM(modeA) - modeA_center(1)).^2 + (mPS(modeA) - modeA_center(2)).^2;
+   [~, ord] = sort(dCenter);
+   modeA = modeA(ord);
+   fprintf('  Mode A ordered by distance to (%.1f, %.1f): %s\n', ...
+      modeA_center(1), modeA_center(2), mat2str(modeA));
+
+   [keep, worstR] = pickRhatOkSubset(src, modeA, minKeep, maxKeep, ...
+      rHatMax, rHatFields);
+   if isempty(keep)
+      fprintf('  No Rhat-ok Mode A subset; trying next source.\n');
+      continue
+   end
+   chains = subsetChainColumns(src, keep);
+   fprintf('  Keep %s (worst Rhat=%.3f); medians gPM=%.3f gPS=%.3f\n', ...
+      mat2str(keep), worstR, median(chains.gammaPM(:)), median(chains.gammaPS(:)));
    return
 end
-error('drawFigures:noChains', 'No kept chains in %s', fileName);
+
+fprintf('  No Rhat-ok Mode A in candidates; trying DIC compare fallback.\n');
+chains = loadDicModeAFallback(minKeep, rHatMax, rHatFields);
+end
+
+function chains = loadDicModeAFallback(minKeep, rHatMax, rHatFields)
+dicFile = '../clusterRepresentation/storage/clusterGammaModeCompare_tomicBays2024_jags';
+fprintf('  Fallback: %s (A_nearZeroPM)\n', dicFile);
+C = load(dicFile, 'results');
+idx = find(strcmp({C.results.name}, 'A_nearZeroPM'), 1);
+if isempty(idx) || ~isfield(C.results(idx), 'chains')
+   error('drawFigures:noModeA', ...
+      'No Mode A chains in weekend mats or DIC compare fallback.');
+end
+src = C.results(idx).chains;
+nCh = size(src.gammaPM, 2);
+[keep, worstR] = pickRhatOkSubset(src, 1:nCh, min(minKeep, nCh), nCh, ...
+   rHatMax, rHatFields);
+if isempty(keep)
+   error('drawFigures:noModeAConverge', ...
+      ['DIC Mode A fallback has no subset with Rhat <= %.2f on %s. ', ...
+      'Need more Mode A sampling before SD figures.'], ...
+      rHatMax, strjoin(rHatFields, ', '));
+end
+chains = subsetChainColumns(src, keep);
+fprintf('  DIC Mode A keep %s (worst Rhat=%.3f); medians gPM=%.3f gPS=%.3f (DIC=%.1f)\n', ...
+   mat2str(keep), worstR, median(chains.gammaPM(:)), median(chains.gammaPS(:)), ...
+   C.results(idx).DIC);
+end
+
+function [keep, worstR] = pickRhatOkSubset(chains, band, minKeep, maxKeep, rHatMax, rHatFields)
+% Largest subset of band with gelmanrubin Rhat <= rHatMax on rHatFields.
+% `band` should already be preference-ordered (best first). Cap combinatorial
+% search at the first maxCand members so nchoosek stays tractable.
+keep = [];
+worstR = inf;
+band = band(:)';
+if numel(band) < minKeep
+   return
+end
+maxCand = 12;
+if numel(band) > maxCand
+   fprintf('  Restricting Rhat search to first %d of %d Mode A candidates\n', ...
+      maxCand, numel(band));
+   band = band(1:maxCand);
+end
+for n = min(maxKeep, numel(band)):-1:minKeep
+   combos = nchoosek(band, n);
+   bestWorst = inf;
+   bestIdx = [];
+   for i = 1:size(combos, 1)
+      idx = combos(i, :);
+      worst = 0;
+      ok = true;
+      for f = 1:numel(rHatFields)
+         name = rHatFields{f};
+         if ~isfield(chains, name)
+            continue
+         end
+         r = gelmanrubin(chains.(name)(:, idx), 0, 1, 'rhat');
+         if ~isfinite(r) || r > rHatMax
+            ok = false;
+            break
+         end
+         worst = max(worst, r);
+      end
+      if ok && worst < bestWorst
+         bestWorst = worst;
+         bestIdx = sort(idx);
+      end
+   end
+   if ~isempty(bestIdx)
+      keep = bestIdx;
+      worstR = bestWorst;
+      return
+   end
+end
+end
+
+function chains = subsetChainColumns(src, idx)
+fn = fieldnames(src);
+chains = struct();
+for i = 1:numel(fn)
+   chains.(fn{i}) = src.(fn{i})(:, idx);
+end
 end
 
 function drawClusterSavageDickeyFigure(chains, pantone, lim, gammaTick)

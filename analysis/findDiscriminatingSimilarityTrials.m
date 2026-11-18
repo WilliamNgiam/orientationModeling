@@ -12,14 +12,14 @@ piVal = pi;
 pi2 = 2 * piVal;
 
 storageFile = fullfile(rootDir, 'similarityComparison', 'storage', ...
-   'similarityComparison_mixture_tomicBays_jags.mat');
+   'similarityComparison_mixture_tomicBays2024_jags.mat');
 if ~isfile(storageFile)
    error(['Missing %s\nRun similarityComparison_mixture in similarityComparison/ ' ...
-      'or copy similarityComparison_mixture_tomicBays_jags.mat into that storage/ folder.'], ...
+      'or copy similarityComparison_mixture_tomicBays2024_jags.mat into that storage/ folder.'], ...
       storageFile);
 end
 load(storageFile, 'chains');
-load(fullfile(rootDir, 'data', 'tomicBays.mat'), 'ds');
+load(fullfile(rootDir, 'data', 'tomicBays2024.mat'), 'ds');
 load(fullfile(rootDir, 'supportingFiles', ...
    'pantoneColors.mat'), 'pantone');
 

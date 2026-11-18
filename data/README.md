@@ -21,6 +21,6 @@ parse_tomicBays2024   % writes tomicBays2024.mat
 | `parse_1.m` | Uniform `mod(x, pi)` fold → `tomicBays.mat` (incorrect for perception/memory) |
 | `parse_2.m` | Old name for the 2024 builder; superseded by `parse_tomicBays2024.m` |
 | `tomicBays.mat` | Mis-parsed product of `parse_1` |
-| `tomicBays_v2.mat` | Transitional alias of the same content as `tomicBays2024.mat` while long MCMC jobs still write `*_tomicBays_v2_*` tags |
+| `tomicBays_v2.mat` | Historical alias of `tomicBays2024.mat` (jobs now write `*_tomicBays2024_*` tags) |
 
 Only `parse_tomicBays2024.m` and `tomicBays2024.mat` belong on GitHub.

@@ -6,7 +6,7 @@
 % kept in full, data-informed inits, wrap alignment, split-Rhat / ESS,
 % 10k joint draws).
 %
-% Storage: storage/similarityComparisonEntropification_tomicBays_jags.mat
+% Storage: storage/similarityComparisonEntropification_tomicBays2024_jags.mat
 
 clear; close all;
 preLoad = true;

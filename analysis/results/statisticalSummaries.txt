@@ -15,11 +15,11 @@ Posterior mean of omega_1 for set size 3 is 0.843, with 95% CI (0.827, 0.859)
 Posterior mean of omega_2 for set size 3 is 0.077, with 95% CI (0.062, 0.093)
 Posterior mean of omega_3 for set size 3 is 0.080, with 95% CI (0.070, 0.090)
 Posterior mean of omega_1 for set size 6 is 0.507, with 95% CI (0.473, 0.540)
-Posterior mean of omega_2 for set size 6 is 0.075, with 95% CI (0.045, 0.110)
-Posterior mean of omega_3 for set size 6 is 0.104, with 95% CI (0.081, 0.127)
+Posterior mean of omega_2 for set size 6 is 0.075, with 95% CI (0.045, 0.109)
+Posterior mean of omega_3 for set size 6 is 0.104, with 95% CI (0.080, 0.127)
 Posterior mean of omega_4 for set size 6 is 0.073, with 95% CI (0.055, 0.093)
 Posterior mean of omega_5 for set size 6 is 0.069, with 95% CI (0.052, 0.087)
-Posterior mean of omega_6 for set size 6 is 0.172, with 95% CI (0.155, 0.189)
+Posterior mean of omega_6 for set size 6 is 0.172, with 95% CI (0.155, 0.190)
 Via multivariate kernel density estimation, the log BF for the null is -Inf for 3 targets and -Inf for 6 targets
 
 ----------
@@ -28,8 +28,8 @@ Similarity Comparison
 Posterior mean of sigma is 0.274, with 95% CI (0.269, 0.278)
 
 ----------
-Cluster Bayes Factor (entropification)
+Cluster Bayes Factor (Mode A / DIC-preferred)
 
-Via kernel density estimation (with bandwidth boosted by factor of 4 to avoid -inf), the log BF for the joint null is -286
-Via kernel density estimation (with bandwidth boosted by factor of 4 to avoid -inf, the log BF for the perceptual-memory null is -193
-Via kernel density estimation (with bandwidth boosted by factor of 4 to avoid -inf, the log BF for the perceptual-similarity null is -288
+Via kernel density estimation (with bandwidth boosted by factor of 4 to avoid -inf), the log BF for the joint null is -Inf
+Via kernel density estimation (with bandwidth boosted by factor of 4 to avoid -inf, the log BF for the perceptual-memory null is -94
+Via kernel density estimation (with bandwidth boosted by factor of 4 to avoid -inf, the log BF for the perceptual-similarity null is -Inf

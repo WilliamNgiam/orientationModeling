@@ -156,8 +156,10 @@ drawFigures   % edit analysisList at top of script to enable analyses
 | `fourScatter` | Perceptual, memory, similarity, common representation scatters |
 | `clusterSavageDickeyEntropification` | Savage–Dickey for cluster+entrop γ |
 | `statisticalSummaries` | Text summaries under `analysis/results/` |
-| `threeScatter` / `twoRepresentations` / `descriptiveAdequacy*` / `swapExamples` | Optional / exploratory (commented by default) |
-| `clusterSavageDickey` | Plain-cluster SD (needs Mode-A keep on 2024; commented until available) |
+| `twoRepresentations` / `swapExamples` | Paper / exploratory panels |
+| `memoryNoSwap` | SI: no-swap memory μ scatter (`memoryReproductionNoSwapMCMC`) |
+| `descriptiveAdequacy*` | SI posterior-predictive checks (commented; NoSwap needs plain yP mat) |
+| `clusterSavageDickey` | Plain-cluster SD (DIC Mode A via `loadModeAClusterChains` on main cluster pool) |
 
 Outputs go to `analysis/figures/` (and `analysis/results/` for summaries). Most analyses load precomputed chains from `../<task>/storage/`.
 
@@ -167,14 +169,13 @@ Outputs go to `analysis/figures/` (and `analysis/results/` for summaries). Most 
 
 ## Known gaps (tomicBays2024)
 
-- **commonRepresentation** on 2024: in progress / use legacy `commonRepresentation_tomicBays_jags` as a temporary placeholder in `drawFigures` only.
-- **similarityComparison** on 2024: no `storage/*_tomicBays2024_*` yet (drivers default to 2024; refit needed).
-- **plain clusterRepresentation** on 2024: no agreed keep set across γ modes; DIC favors near-zero `γ_pm` (see `clusterRepresentation.m`). Cluster+entrop weekend keep is available.
-- **von Mises / Jones–Pewsey** on 2024: drivers updated; refits may still be needed.
+- **plain clusterRepresentation** on 2024: γ multimodal; paper SD uses Mode A from main cluster pool rather than a single short-driver keep. Cluster+entrop weekend keep is available.
+- **von Mises / Jones–Pewsey** on 2024: drivers updated; refits may still be needed. (Similarity von Mises / mixture mats were retagged `*_tomicBays2024_*` because `ds` is unchanged across parses.)
+- **similarityComparisonMCMC**: no stored MCMC product yet (plain/entrop/vonMises/mixture `*_tomicBays2024_*` mats are available).
 
 ## Gitignored paths
 
-`.gitignore` excludes `**/storage/`, `**/tmp/`, mis-parsed `data/tomicBays.mat` / `parse_1.m`, transitional `data/tomicBays_v2.mat`, ad-hoc weekend/DIC runners, and `analysis/drawFigures_legacyTomicBays.m`. Clone the repo and run drivers to regenerate MCMC files locally, or copy `storage/*.mat` from a completed analysis environment.
+`.gitignore` excludes `**/storage/`, `**/tmp/`, mis-parsed `data/tomicBays.mat` / `parse_1.m`, historical `data/tomicBays_v2.mat`, ad-hoc weekend/DIC runners, and `analysis/drawFigures_legacyTomicBays.m`. Clone the repo and run drivers to regenerate MCMC files locally, or copy `storage/*.mat` from a completed analysis environment.
 
 ## Citation
 

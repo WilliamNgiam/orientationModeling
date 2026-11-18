@@ -26,7 +26,8 @@ else
    elseif tmp(3) == 1920
       dual = 'upDown';
    else
-      error('not sure about monitors');
+      % Headless / unknown geometry (batch -nodisplay): keep normalized position.
+      dual = 'leave';
    end
    % dual
    switch dual

@@ -5,8 +5,9 @@
 % trial-latent / yP monitors, wrap alignment, split-Rhat / ESS gates,
 % 10k joint draws.
 %
-% Storage: storage/similarityComparisonMCMC_tomicBays_jags.mat
-% (does not overwrite similarityComparison_tomicBays_jags.mat)
+% Storage: storage/similarityComparisonMCMC_tomicBays2024_jags.mat
+% (does not overwrite similarityComparison_tomicBays2024_jags.mat)
+% Similarity ds is unchanged across parses; tag is tomicBays2024.
 
 clear; close all;
 preLoad = true;
@@ -21,7 +22,7 @@ modelName = 'similarityComparisonMCMC';
 engine = 'jags';
 
 dataList = {...
-   'tomicBaysSimilarity', ...
+   'tomicBaysSimilarity2024', ...
    };
 
 pi = 3.1415;
@@ -33,9 +34,9 @@ for dataIdx = 1:numel(dataList)
    dataName = dataList{dataIdx};
    switch dataName
 
-      case 'tomicBaysSimilarity'
+      case 'tomicBaysSimilarity2024'
          dataDir = fullfile(thisDir, '..', 'data');
-         dataName = 'tomicBays';
+         dataName = 'tomicBays2024';
          load(fullfile(dataDir, dataName), 'ds');
 
          a = ds.aIdx;

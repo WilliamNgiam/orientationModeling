@@ -44,8 +44,10 @@ j.name = tag;
 j.folder = folder;
 j.tag = tag;
 j.modelFile = fullfile(rootDir, folder, [jagsBase '_jags.txt']);
+% Paper product names omit "Weekend" (tag still used for job logging).
+mainTag = regexprep(tag, 'Weekend$', '');
 j.outMat = fullfile(rootDir, folder, 'storage', ...
-   sprintf('%s_tomicBays_v2_jags.mat', tag));
+   sprintf('%s_tomicBays2024_jags.mat', mainTag));
 j.nBurnin = 3000;
 % Match SelectMCMC wave length (1500) so seeded chains append cleanly
 j.nSamples = 1500;
