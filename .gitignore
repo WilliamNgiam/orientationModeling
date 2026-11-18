@@ -46,3 +46,6 @@ clusterRepresentation/reportClusterSavageDickey.m
 
 # MATLAB autosaves
 **/*.asv
+
+# R session history
+**/.Rhistory
