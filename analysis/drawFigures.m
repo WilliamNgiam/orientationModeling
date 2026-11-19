@@ -10,15 +10,15 @@ printFigures = true;
 
 analysisList = {...
    % --- paper ---
-   'fourScatter'; ...
-   'clusterSavageDickey'; ...      % full [0,3]; DIC Mode A (~0, 1.5) + R̂ keep
-   'clusterSavageDickeyEntropification'; ...  % zoom [0,1]
+   % 'fourScatter'; ...
+   % 'clusterSavageDickey'; ...      % full [0,3]; DIC Mode A (~0, 1.5) + R̂ keep
+   % 'clusterSavageDickeyEntropification'; ...  % zoom [0,1]
    'statisticalSummaries'; ...
-   'twoRepresentations'; ...
-   'swapExamples'; ...
+   % 'twoRepresentations'; ...
+   % 'swapExamples'; ...
    % --- supplementary (SI) ---
-   'memoryNoSwap'; ...                 % μ scatter, no-swap memory MCMC
-   'similarityEntropification'; ...    % μ scatter, similarity + entropification
+   % 'memoryNoSwap'; ...                 % μ scatter, no-swap memory MCMC
+   % 'similarityEntropification'; ...    % μ scatter, similarity + entropification
    % 'descriptiveAdequacyPerceptual'; ...
    % 'descriptiveAdequacyMemory'; ...
    % 'descriptiveAdequacyMemoryNoSwap'; ...  % needs plain NoSwap yP mat
@@ -34,6 +34,7 @@ analysisList = {...
 
 
 % load data
+addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'supportingFiles'));
 dataDir = '../data/';
 dataName = 'tomicBays2024';
 load([dataDir dataName], 'ds', 'dp', 'dm');
@@ -336,57 +337,15 @@ for analysisIdx = 1:numel(analysisList)
          omega3critical = [1 0 0];
          omega6critical = [1 0 0 0 0 0];
 
-         % counting samples suffers from even prior having little density near critical point in the 6-dimensional case
-         % threshold = 0.2;
-         %
-         % [t, ~] = size(omega3full);
-         % diff = vecnorm(omega3full - repmat(omega3critical, t, 1), 2, 2);
-         % posteriorProportion3 = mean(diff < threshold);
-         %
-         % [t, ~] = size(omega3fullPrior);
-         % diff = vecnorm(omega3fullPrior - repmat(omega3critical, t, 1), 2, 2);
-         % priorProportion3 = mean(diff < threshold);
-         %
-         % [t, ~] = size(omega6full);
-         % diff = vecnorm(omega6full - repmat(omega6critical, t, 1), 2, 2);
-         % posteriorProportion6 = mean(diff < threshold);
-         %
-         % [t, ~] = size(omega6fullPrior);
-         % diff = vecnorm(omega6fullPrior - repmat(omega6critical, t, 1), 2, 2);
-         % priorProportion6 = mean(diff < threshold);
+         % Log-space Gaussian KDE (same as supportingFiles/savageDickeyLogBF):
+         % avoids -Inf when mvksdensity underflows at the no-swap corner.
+         [logBF3, ~] = savageDickeyLogBF(omega3full, omega3fullPrior, omega3critical);
+         [logBF6, ~] = savageDickeyLogBF(omega6full, omega6fullPrior, omega6critical);
 
-         % based on kernel density estimation, with thanks to cursor
-         n = size(omega3full, 1);
-         d = size(omega3full, 2);
-         sigma = std(omega3full, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPosterior = mvksdensity(omega3full, omega3critical, 'Bandwidth', bw);
-
-         n = size(omega3fullPrior, 1);
-         d = size(omega3fullPrior, 2);
-         sigma = std(omega3fullPrior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPrior = mvksdensity(omega3fullPrior, omega3critical, 'Bandwidth', bw);
-
-         logBF3 = densityLogBF(fPosterior, fPrior);
-
-         n = size(omega6full, 1);
-         d = size(omega6full, 2);
-         sigma = std(omega6full, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPosterior = mvksdensity(omega6full, omega6critical, 'Bandwidth', bw);
-
-         n = size(omega6fullPrior, 1);
-         d = size(omega6fullPrior, 2);
-         sigma = std(omega6fullPrior, 0, 1);
-         bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-         fPrior = mvksdensity(omega6fullPrior, omega6critical, 'Bandwidth', bw);
-
-         logBF6 = densityLogBF(fPosterior, fPrior);
-
-         fprintf(fid, ['Via multivariate kernel density estimation, the log BF ', ...
-            'for the null is %s for 3 targets and %s for 6 targets\n'], ...
-            formatLogBF(logBF3), formatLogBF(logBF6));
+         fprintf(fid, ['Savage-Dickey log BF_01 via multivariate KDE in log space ', ...
+            '(positive favors null / no-swap; negative favors alternative / swap).\n']);
+         fprintf(fid, '%s\n', formatLogBFSentence('memory set-size 3 no-swap null', logBF3));
+         fprintf(fid, '%s\n', formatLogBFSentence('memory set-size 6 no-swap null', logBF6));
 
          % SIMILARITY
          fileName = fileList{3};
@@ -402,6 +361,26 @@ for analysisIdx = 1:numel(analysisList)
          sigma = codatable(chains, 'sigma', @mean);
          bounds = prctile(chains.sigma(:), CIbounds);
          fprintf(fid, 'Posterior mean of sigma is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', sigma, bounds);
+
+         % SIMILARITY + ENTROPIFICATION
+         fileName = '../similarityComparison/storage/similarityComparisonEntropification_tomicBays2024_jags';
+         fprintf('\n----------\nLoading pre-stored samples from file %s\n', fileName);
+         load(sprintf('%s', fileName), 'chains');
+         [keepChains, rHat] = findKeepChains(chains.sigma, 2, 1.1); %#ok<ASGLU>
+         fields = fieldnames(chains);
+         for i = 1:numel(fields)
+            chains.(fields{i}) = chains.(fields{i})(:, keepChains);
+         end
+         fprintf(fid, '\n----------\nSimilarity Comparison Entropification\n\n');
+         sigma = codatable(chains, 'sigma', @mean);
+         bounds = prctile(chains.sigma(:), CIbounds);
+         fprintf(fid, 'Posterior mean of sigma is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', sigma, bounds);
+         if isfield(chains, 'w')
+            wMean = mean(chains.w(:));
+            wBounds = prctile(chains.w(:), CIbounds);
+            fprintf(fid, 'Posterior mean of w is %1.3f, with 95%% CI (%1.3f, %1.3f)\n', ...
+               wMean, wBounds);
+         end
 
          % CLUSTER (DIC Mode A; prefer large pool first)
          scale = 4;
@@ -997,35 +976,52 @@ end
 
 function writeClusterSavageDickeyBFs(fid, chains, scale)
 %WRITECLUSTERSAVAGEDICKEYBFS Joint and marginal nulls at gamma = 0.
+%
+% Reports log BF_01 = log f(θ0|data) - log f(θ0) (Savage–Dickey).
+% Positive => favors null (common map); negative => favors alternative.
+fprintf(fid, ['Savage-Dickey log BF_01 (positive favors null / common map; ', ...
+   'negative favors alternative / separate maps). ', ...
+   'Densities via Gaussian KDE in log space (bandwidth x%d).\n'], scale);
+
 Xposterior = [chains.gammaPS(:) chains.gammaPM(:)];
-Xprior = [chains.gammaPrior(:) chains.gammaPrior(randperm(length(chains.gammaPrior(:))))'];
+g0 = chains.gammaPrior(:);
+Xprior = [g0, g0(randperm(numel(g0)))];
 logBF = kdeLogBF(Xposterior, Xprior, [0 0], scale);
-fprintf(fid, ['Via kernel density estimation (bandwidth x%d), the log BF ', ...
-   'for the joint null is %s\n'], scale, formatLogBF(logBF));
+fprintf(fid, '%s\n', formatLogBFSentence('joint null (gamma_pm, gamma_ps)=(0,0)', logBF));
 
 logBF = kdeLogBF(chains.gammaPM(:), chains.gammaPrior(:), 0, scale);
-fprintf(fid, ['Via kernel density estimation (bandwidth x%d), the log BF ', ...
-   'for the perceptual-memory null is %s\n'], scale, formatLogBF(logBF));
+fprintf(fid, '%s\n', formatLogBFSentence('perceptual-memory null (gamma_pm=0)', logBF));
 
 logBF = kdeLogBF(chains.gammaPS(:), chains.gammaPrior(:), 0, scale);
-fprintf(fid, ['Via kernel density estimation (bandwidth x%d), the log BF ', ...
-   'for the perceptual-similarity null is %s\n'], scale, formatLogBF(logBF));
+fprintf(fid, '%s\n', formatLogBFSentence('perceptual-similarity null (gamma_ps=0)', logBF));
 end
 
 function logBF = kdeLogBF(Xposterior, Xprior, Xcrit, scale)
-n = size(Xposterior, 1);
-d = size(Xposterior, 2);
-sigma = std(Xposterior, 0, 1);
-bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-fPosterior = ksdensity(Xposterior, Xcrit, 'Bandwidth', bw * scale);
+%KDELOGBF log BF_01 via log-space Gaussian KDE (finite; no -Inf underflow).
+if isvector(Xposterior), Xposterior = Xposterior(:); end
+if isvector(Xprior), Xprior = Xprior(:); end
+Xcrit = double(Xcrit(:)');
+logFPost = logKdeDensity(Xposterior, Xcrit, scale);
+logFPrior = logKdeDensity(Xprior, Xcrit, scale);
+logBF = logFPost - logFPrior;
+end
 
-n = size(Xprior, 1);
-d = size(Xprior, 2);
-sigma = std(Xprior, 0, 1);
+function logF = logKdeDensity(draws, critical, scale)
+n = size(draws, 1);
+d = size(draws, 2);
+sigma = std(draws, 0, 1);
 bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-fPrior = ksdensity(Xprior, Xcrit, 'Bandwidth', bw * scale);
-
-logBF = densityLogBF(fPosterior, fPrior);
+bw(bw <= 0 | ~isfinite(bw)) = 1e-3;
+bw = max(bw, 1e-3) * scale;
+logNorm = -sum(log(bw)) - 0.5 * d * log(2 * pi);
+z = (draws - critical) ./ bw;
+logKi = logNorm - 0.5 * sum(z.^2, 2);
+m = max(logKi);
+logF = m + log(sum(exp(logKi - m))) - log(n);
+if ~isfinite(logF)
+   [~, j] = min(sum(z.^2, 2));
+   logF = logKi(j) - log(n);
+end
 end
 
 function logBF = densityLogBF(fPosterior, fPrior)
@@ -1044,7 +1040,7 @@ end
 end
 
 function str = formatLogBF(logBF, bound)
-%FORMATLOGBF Printable log BF; extreme/nonfinite values as inequalities.
+%FORMATLOGBF Compact printable log BF_01 (used by memory swap BF lines).
 if nargin < 2
    bound = 100;
 end
@@ -1056,13 +1052,43 @@ if ~isfinite(logBF)
    else
       str = sprintf('> +%d', bound);
    end
-elseif logBF <= -bound
-   str = sprintf('< -%d', bound);
-elseif logBF >= bound
-   str = sprintf('> +%d', bound);
 else
-   str = sprintf('= %.0f', logBF);
+   str = sprintf('= %.1f', logBF);
 end
+end
+
+function str = formatLogBFSentence(label, logBF01)
+%FORMATLOGBFSENTENCE Clear null vs alternative wording for summaries.
+isMemory = contains(lower(char(label)), 'memory') || contains(lower(char(label)), 'swap');
+if isMemory
+   nullName = 'NULL / no-swap';
+   altName = 'ALTERNATIVE / swap';
+else
+   nullName = 'NULL / common map';
+   altName = 'ALTERNATIVE / separate maps';
+end
+if ~isfinite(logBF01)
+   if isnan(logBF01)
+      str = sprintf('  %s: log BF_01 undefined', label);
+   elseif logBF01 < 0
+      str = sprintf('  %s: log BF_01 -> -Inf (favors %s); log BF_10 -> +Inf', ...
+         label, altName);
+   else
+      str = sprintf('  %s: log BF_01 -> +Inf (favors %s); log BF_10 -> -Inf', ...
+         label, nullName);
+   end
+   return
+end
+logBF10 = -logBF01;
+if logBF01 > 0
+   favored = nullName;
+elseif logBF01 < 0
+   favored = altName;
+else
+   favored = 'neither (BF_01 = 1)';
+end
+str = sprintf(['  %s: log BF_01 = %.2f (favors %s); ', ...
+   'equivalently log BF_10 = %.2f'], label, logBF01, favored, logBF10);
 end
 
 function chains = loadModeAClusterChains(fileNames)

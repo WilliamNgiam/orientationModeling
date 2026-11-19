@@ -20,7 +20,9 @@ Posterior mean of omega_3 for set size 6 is 0.104, with 95% CI (0.080, 0.127)
 Posterior mean of omega_4 for set size 6 is 0.073, with 95% CI (0.055, 0.093)
 Posterior mean of omega_5 for set size 6 is 0.069, with 95% CI (0.052, 0.087)
 Posterior mean of omega_6 for set size 6 is 0.172, with 95% CI (0.155, 0.190)
-Via multivariate kernel density estimation, the log BF for the null is < -100 for 3 targets and < -100 for 6 targets
+Savage-Dickey log BF_01 via multivariate KDE in log space (positive favors null / no-swap; negative favors alternative / swap).
+  memory set-size 3 no-swap null: log BF_01 = -4296.20 (favors ALTERNATIVE / swap); equivalently log BF_10 = 4296.20
+  memory set-size 6 no-swap null: log BF_01 = -4521.58 (favors ALTERNATIVE / swap); equivalently log BF_10 = 4521.58
 
 ----------
 Similarity Comparison
@@ -28,13 +30,20 @@ Similarity Comparison
 Posterior mean of sigma is 0.274, with 95% CI (0.269, 0.278)
 
 ----------
+Similarity Comparison Entropification
+
+Posterior mean of sigma is 0.037, with 95% CI (0.019, 0.067)
+Posterior mean of w is 2.972, with 95% CI (2.882, 3.077)
+
+----------
 Cluster Bayes Factor (Mode A / DIC-preferred)
 
 Posterior mean of gamma_pm is 0.124, with 95% CI (0.105, 0.147)
 Posterior mean of gamma_ps is 1.483, with 95% CI (1.438, 1.545)
-Via kernel density estimation (bandwidth x4), the log BF for the joint null is < -100
-Via kernel density estimation (bandwidth x4), the log BF for the perceptual-memory null is = -94
-Via kernel density estimation (bandwidth x4), the log BF for the perceptual-similarity null is < -100
+Savage-Dickey log BF_01 (positive favors null / common map; negative favors alternative / separate maps). Densities via Gaussian KDE in log space (bandwidth x4).
+  joint null (gamma_pm, gamma_ps)=(0,0): log BF_01 = -1912.21 (favors ALTERNATIVE / separate maps); equivalently log BF_10 = 1912.21
+  perceptual-memory null (gamma_pm=0): log BF_01 = -93.93 (favors ALTERNATIVE / swap); equivalently log BF_10 = 93.93
+  perceptual-similarity null (gamma_ps=0): log BF_01 = -3174.84 (favors ALTERNATIVE / separate maps); equivalently log BF_10 = 3174.84
 
 ----------
 Cluster Entropification (paper keep)
@@ -42,6 +51,7 @@ Cluster Entropification (paper keep)
 Posterior mean of gamma_pm is 0.104, with 95% CI (0.091, 0.118)
 Posterior mean of gamma_ps is 0.089, with 95% CI (0.080, 0.103)
 Posterior mean of w is 3.007, with 95% CI (2.917, 3.106)
-Via kernel density estimation (bandwidth x4), the log BF for the joint null is < -100
-Via kernel density estimation (bandwidth x4), the log BF for the perceptual-memory null is < -100
-Via kernel density estimation (bandwidth x4), the log BF for the perceptual-similarity null is < -100
+Savage-Dickey log BF_01 (positive favors null / common map; negative favors alternative / separate maps). Densities via Gaussian KDE in log space (bandwidth x4).
+  joint null (gamma_pm, gamma_ps)=(0,0): log BF_01 = -286.36 (favors ALTERNATIVE / separate maps); equivalently log BF_10 = 286.36
+  perceptual-memory null (gamma_pm=0): log BF_01 = -181.44 (favors ALTERNATIVE / swap); equivalently log BF_10 = 181.44
+  perceptual-similarity null (gamma_ps=0): log BF_01 = -185.63 (favors ALTERNATIVE / separate maps); equivalently log BF_10 = 185.63

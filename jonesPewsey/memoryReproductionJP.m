@@ -166,10 +166,12 @@ for dataIdx = 1:numel(dataList)
    omega3fullPrior = [chains.omega3prior_1(:) chains.omega3prior_2(:) chains.omega3prior_3(:)];
    omega6fullPrior = [chains.omega6prior_1(:) chains.omega6prior_2(:) chains.omega6prior_3(:) ...
       chains.omega6prior_4(:) chains.omega6prior_5(:) chains.omega6prior_6(:)];
-   logBF3 = savageDickeyLogBF(omega3full, omega3fullPrior, [1 0 0]);
-   logBF6 = savageDickeyLogBF(omega6full, omega6fullPrior, [1 0 0 0 0 0]);
-   fprintf('Via multivariate kernel density estimation, the log BF for the null is %.0f for 3 targets and %.0f for 6 targets\n', ...
-      logBF3, logBF6);
+   [logBF3, ~] = savageDickeyLogBF(omega3full, omega3fullPrior, [1 0 0]);
+   [logBF6, ~] = savageDickeyLogBF(omega6full, omega6fullPrior, [1 0 0 0 0 0]);
+   fprintf(['Savage-Dickey log BF_01 (positive favors null / no-swap; ', ...
+      'negative favors alternative / swap; finite log-space KDE):\n']);
+   fprintf('  set size 3: log BF_01 = %.2f; log BF_10 = %.2f\n', logBF3, -logBF3);
+   fprintf('  set size 6: log BF_01 = %.2f; log BF_10 = %.2f\n', logBF6, -logBF6);
    fprintf('Joint posterior draws used for Savage-Dickey: %d\n', size(omega3full, 1));
 
    F = figure; clf; hold on;
@@ -305,22 +307,6 @@ end
 
 function psi = clipPsi(psi)
 psi = min(max(psi, -0.999), 0.999);
-end
-
-function logBF = savageDickeyLogBF(posterior, priorDraws, critical)
-n = size(posterior, 1);
-d = size(posterior, 2);
-sigma = std(posterior, 0, 1);
-bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-bw(bw <= 0) = 1e-3;
-fPosterior = mvksdensity(posterior, critical, 'Bandwidth', bw);
-n = size(priorDraws, 1);
-d = size(priorDraws, 2);
-sigma = std(priorDraws, 0, 1);
-bw = sigma * (4 / (n * (d + 4))) ^ (1 / (d + 4));
-bw(bw <= 0) = 1e-3;
-fPrior = mvksdensity(priorDraws, critical, 'Bandwidth', bw);
-logBF = log(fPosterior) - log(fPrior);
 end
 
 function [muMean, bounds] = summarizeHalfCircle(vals, CI)
