@@ -7,7 +7,7 @@ output: html_document
 
 ## Overview
 
-This file is associated with the preprint titled ["Similarity judgments and visual working memory do not share the same cognitive representation"](https://osf.io/preprints/psyarxiv/fm9vz_v1) by William XQ Ngiam (Adelaide University) and Michael D Lee (University of California Irvine. This research project models the underlying psychological space in perceptual tasks, working memory tasks, and similarity judgment tasks.
+This file is associated with the preprint titled ["Model-based evidence for task-dependent representations in psychological similarity and working memory"](https://osf.io/preprints/psyarxiv/fm9vz_v3) by William XQ Ngiam (Adelaide University) and Michael D Lee (University of California Irvine. This research project models the underlying psychological space in perceptual tasks, working memory tasks, and similarity judgment tasks.
 
 The following model recovers the underlying psychological space for the orientation **perceptual reproduction** task in [Tomic and Bays (2024)](https://psycnet.apa.org/doi/10.1037/xlm0001172). In this task, a line at an angle (0 to 180 degrees) is shown to the subject and remains on the screen. The subject reproduces the orientation as closely as possible.
 
@@ -30,6 +30,10 @@ library(R2jags) # v0.8-9
 library(tidyverse) # v2.0.0
 library(coda) # v0.19-4.1
 library(ggmcmc) # v1.5.1.2
+library(here)
+
+# Anchor project root for here()
+here::i_am("scripts/perceptualReproduction.Rmd")
 
 # Provide R session output 
 sessionInfo()
@@ -42,7 +46,7 @@ set.seed(123)
 
 ```{r read data, warning = FALSE, message = FALSE}
 # Load in Tomic and Bays (2024) dataset
-percData <- read_csv(paste0(getwd(),"/oriPercData_clean.csv"))
+percData <- read_csv(here("data", "oriPercData_clean.csv"))
 
 # Create intervals to match the Tomic and Bays (2024) perceptual task.
 binIntervals = seq(0,pi,length.out = 73)
@@ -94,14 +98,23 @@ bayes.mod.inits <- function() {
 ### Run model fit
 
 ```{r run model fit}
-bayes.mod.fit <- jags(data = data.jags,
-                      inits = bayes.mod.inits,
-                      parameters.to.save = bayes.mod.params,
-                      n.chains = 8,
-                      n.iter = 8000,
-                      n.burnin = 2000,
-                      model.file = paste0(getwd(),"/perceptualReproduction_jags.txt"))
+mcmc_file <- here("outputs", "perceptualReproduction_mcmc.rds")
 
+if (file.exists(mcmc_file)) {
+  message("Loading existing MCMC run from: ", mcmc_file)
+  bayes.mod.fit <- readRDS(mcmc_file)
+} else {
+  bayes.mod.fit <- jags(data = data.jags,
+                        inits = bayes.mod.inits,
+                        parameters.to.save = bayes.mod.params,
+                        n.chains = 8,
+                        n.iter = 8000,
+                        n.burnin = 2000,
+                        model.file = here("models", "perceptualReproduction_jags.txt"))
+
+  dir.create(here("outputs"), showWarnings = FALSE, recursive = TRUE)
+  saveRDS(bayes.mod.fit, mcmc_file)
+}
 ```
 ### Evaluate model
 
