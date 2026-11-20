@@ -7,7 +7,7 @@ output: html_document
 
 ## Overview
 
-This file is associated with the preprint titled ["Similarity judgments and visual working memory do not share the same cognitive representation"](https://osf.io/preprints/psyarxiv/fm9vz_v1) by William XQ Ngiam (Adelaide University) and Michael D Lee (University of California Irvine). This research project models the cognitive representation underlying perceptual tasks, working memory tasks, and similarity judgment tasks.
+This file is associated with the preprint titled ["Model-based evidence for task-dependent representations in psychological similarity and working memory"](https://osf.io/preprints/psyarxiv/fm9vz_v3) by William XQ Ngiam (Adelaide University) and Michael D Lee (University of California Irvine). This research project models the cognitive representation underlying perceptual tasks, working memory tasks, and similarity judgment tasks.
 
 The following model recovers the underlying psychological space for the orientation **memory reproduction** task in [Tomic and Bays (2024)](https://psycnet.apa.org/doi/10.1037/xlm0001172). In this task, either three or six oriented lines (randomly sampled from 0 to 180 degrees) is shown to the subject. The subject is probed to recall the orientation of one of the shown lines, and has to reproduce the orientation as closely as possible.
 
@@ -24,18 +24,24 @@ You will also need to have installed JAGS on your device. The installer can be a
 
 ### Setup
 
-```{r setup}
+```{r setup, message = FALSE, warning = FALSE}
 # Load required packages
-library(R2jags) # v0.8-9
+library(R2jags)    # v0.8-9
+library(runjags)   # parallel JAGS execution
 library(tidyverse) # v2.0.0
-library(coda) # v0.19-4.1
-library(ggmcmc) # v1.5.1.2
+library(coda)      # v0.19-4.1
+library(ggmcmc)    # v1.5.1.2
+library(here)
+library(parallel)
 
-# Provide R session output 
+# Anchor project root for here()
+here::i_am("scripts/memoryReproduction.Rmd")
+
+# Provide R session output
 sessionInfo()
 
 # Set RNG seed for reproducibility
-set.seed(42)
+set.seed(9058395)
 
 # Remove hashes from output
 knitr::opts_chunk$set(comment = NA)
@@ -45,92 +51,248 @@ knitr::opts_chunk$set(comment = NA)
 
 ```{r read data, warning = FALSE, message = FALSE}
 # Load in Tomic and Bays (2024) dataset
-memData <- read_csv(paste0(getwd(),"/oriWMData_clean.csv"))
+memData <- read_csv(here("data", "oriWMData_clean.csv"), show_col_types = FALSE)
 
-# Create intervals to match the Tomic and Bays (2024) perceptual task.
-binIntervals = seq(-pi,pi,length.out = 73)
+# Create 72 orientation bins on [-pi/2, pi/2) to match the perceptual task
+binIntervals <- seq(-pi/2, pi/2, length.out = 73)
+muTruth <- binIntervals[-73] + pi/2 # Physical bin locations on [0, pi)
 
-# Assign indices to the closest interval for the target (stimulus) values and response values
-memData <- memData %>% 
-  mutate(response = signif(response,digits = 5)) %>% 
-  rowwise() %>% 
-  # Change all NaNs to NA
-  mutate(across(c("nontarget_3", "nontarget_4", "nontarget_5"),
-                na_if, NaN)) %>% 
-  # Match response and target values to the intervals on the semi-circle
-  mutate(responseIndex = which.min(abs(response-binIntervals)),
-         targetIndex = which.min(abs(target-binIntervals)),
-         nontarget1_idx = which.min(abs(nontarget_1-binIntervals)),
-         nontarget2_idx = which.min(abs(nontarget_2-binIntervals)),
-         nontarget3_idx = list(case_when(!is.na(nontarget_3) ~ which.min(abs(as.numeric(nontarget_3)-binIntervals)))),
-         nontarget4_idx = list(case_when(!is.na(nontarget_4) ~ which.min(abs(as.numeric(nontarget_4)-binIntervals)))),
-         nontarget5_idx = list(case_when(!is.na(nontarget_5) ~ which.min(abs(as.numeric(nontarget_5)-binIntervals))))) %>% 
-  # The response and target values closest to pi are re-indexed to the first bin (0)
-  mutate(responseIndex = case_when(responseIndex == 73 ~ 1,
-                                   .default = responseIndex),
-         targetIndex = case_when(targetIndex == 73 ~ 1,
-                                 .default = targetIndex)) %>% 
-  # Change values
-  mutate(target = (target+pi)/2,
-         response = (response + pi)/2)
+# Fast vectorized helper to map orientations in [-pi/2, pi/2] to bin indices 1..72
+angle_to_bin <- function(x) {
+  idx <- max.col(-abs(outer(x, binIntervals, "-")), ties.method = "first")
+  ifelse(idx == 73L, 1L, idx)
+}
 
-# Set up the true values to be recovered
-muTruth = (binIntervals[-73] + pi)/2 # Remove the last index because that is the point at which the circle wraps around
-sigmaTruth = 0.01
+# Convert target and response from [-pi, pi] to [-pi/2, pi/2]
+target_half <- memData$target / 2
+response_half <- signif(memData$response / 2, digits = 5)
 
-# Assign data to vectors
-setSize <- as.vector(memData$setsize/3)
-stim <- memData %>% 
-  select(targetIndex, nontarget1_idx, nontarget2_idx, nontarget3_idx, nontarget4_idx, nontarget5_idx)
-stim <- as.matrix(stim)
-y <- as.numeric(memData$response)
-nTrials <- as.numeric(length(memData$response))
-nStimuli <- as.numeric(length(muTruth))
+# Extract non-target orientations (already in [-pi/2, pi/2]; NaN for set size 3 slots 3..5)
+nt_mat <- as.matrix(memData[, c("nontarget_1", "nontarget_2", "nontarget_3", "nontarget_4", "nontarget_5")])
+nt_mat[is.nan(nt_mat)] <- NA_real_
+
+# Assign data dimensions and vectors
+nTrials <- nrow(memData)
+nStimuli <- length(muTruth)
+setSize <- as.integer(memData$setsize / 3)
+maxPresented <- as.integer(max(memData$setsize))
+
+# Map target and non-targets to bin indices in 1:72 (unused non-target slots fixed to 1L)
+target_idx <- angle_to_bin(target_half)
+nt_idx <- matrix(1L, nrow = nTrials, ncol = 5)
+for (j in 1:5) {
+  valid <- !is.na(nt_mat[, j])
+  nt_idx[valid, j] <- angle_to_bin(nt_mat[valid, j])
+}
+
+# Build stimulus index matrix s and order non-targets by circular similarity to target
+s <- cbind(target_idx, nt_idx)
+target_pi <- target_half + pi/2
+nt_pi <- nt_mat + pi/2
+
+for (t in seq_len(nTrials)) {
+  k <- memData$setsize[t] - 1L
+  vals <- nt_pi[t, seq_len(k)]
+  circ_dist <- pmin(abs(target_pi[t] - vals), pi - abs(target_pi[t] - vals))
+  ord <- order(c(0, circ_dist))
+  s[t, seq_len(k + 1L)] <- s[t, ord]
+}
+storage.mode(s) <- "integer"
+
+# Responses on [0, pi]
+y <- as.numeric(response_half + pi/2)
 ```
 
-### Read in data for JAGS
+### Read in data and initial values for JAGS
 
 ```{r read in data}
-data.jags <- list("setSize","stim","y","nTrials","nStimuli")
-bayes.mod.params <- c("mu","sigma", "omega3", "omega6")
-bayes.mod.inits <- function() {
-  list("sigma" = runif(2)*pi)
+data.jags <- list(
+  setSize = setSize,
+  maxPresented = maxPresented,
+  s = s,
+  y = y,
+  nTrials = nTrials,
+  nStimuli = nStimuli
+)
+
+# Monitor only the continuous structural parameters (exclude trial-level xi and yP)
+bayes.mod.params <- c("mu", "sigma", "omega3", "omega6")
+
+# Uniform initialization of sigma on (0.2, 0.9) based on informed fitting. Can be replaced with (0, pi) to match reported paper
+bayes.mod.inits <- function(chain = 1) {
+  pi_jags <- 3.1415
+  list(
+    sigma = runif(2, 0.2, 0.9),
+    .RNG.name = "base::Mersenne-Twister",
+    .RNG.seed = 100L + as.integer(chain)
+  )
 }
 ```
 
 ### Run model fit
 
 ```{r run model fit}
-bayes.mod.fit <- jags(data = data.jags,
-                      inits = bayes.mod.inits,
-                      parameters.to.save = bayes.mod.params,
-                      n.chains = 4,
-                      n.iter = 8000,
-                      n.burnin = 1000,
-                      model.file = paste0(getwd(),"/memoryReproduction_jags.txt"))
+# Optimized MCMC settings:
+# - 8 chains run in parallel across CPU cores
+# - 2,000 adaptation + 5,000 burn-in iterations (7,000 total pre-sampling updates/chain)
+# - 1,250 kept samples/chain with thin = 10 (12,500 post-burn-in updates/chain -> 10,000 total joint posterior draws)
+n_chains  <- 8
+n_adapt   <- 2000
+n_burnin  <- 5000
+n_samples <- 1250
+n_thin    <- 10
 
-```
-### Evaluate model
+mcmc_file <- here("outputs", "memoryReproduction_mcmc.rds")
 
-```{r evaluate model}
-print(bayes.mod.fit)
+if (file.exists(mcmc_file)) {
+  message("Loading existing MCMC run from: ", mcmc_file)
+  bayes.mod.fit <- readRDS(mcmc_file)
+} else {
+  inits_list <- lapply(seq_len(n_chains), bayes.mod.inits)
+
+  bayes.mod.fit <- run.jags(
+    model = here("models", "memoryReproduction_jags.txt"),
+    data = data.jags,
+    inits = inits_list,
+    monitor = bayes.mod.params,
+    n.chains = n_chains,
+    adapt = n_adapt,
+    burnin = n_burnin,
+    sample = n_samples,
+    thin = n_thin,
+    method = "parallel",
+    n.sims = min(n_chains, parallel::detectCores()),
+    summarise = FALSE
+  )
+
+  dir.create(here("outputs"), showWarnings = FALSE, recursive = TRUE)
+  saveRDS(bayes.mod.fit, mcmc_file)
+}
 ```
+
+### Post-process chains and evaluate convergence
 
 ```{r evaluate model as mcmc}
-bayes.mod.fit.mcmc <- as.mcmc(bayes.mod.fit)
-summary(bayes.mod.fit.mcmc)
+# Convert to coda mcmc.list and drop deterministic +/-pi wrap copies mu[73:216]
+raw_mcmc <- as.mcmc.list(bayes.mod.fit)
+keep_cols <- !grepl("^mu\\[([7-9][3-9]|[8-9][0-9]|[1-9][0-9]{2})\\]$", varnames(raw_mcmc))
+bayes.mod.fit.mcmc <- raw_mcmc[, keep_cols]
+
+# Align any 0/pi boundary-wrapped mu_j chains to the nearest wrap relative to muTruth[j]
+pi_jags <- 3.1415
+circular_mean_half <- function(vals, pi_val = pi_jags) {
+  phi <- 2 * vals
+  phi0 <- atan2(mean(sin(phi)), mean(cos(phi)))
+  (phi0 / 2) %% pi_val
+}
+
+for (j in 2:nStimuli) {
+  param_name <- paste0("mu[", j, "]")
+  for (c_idx in seq_len(n_chains)) {
+    vals <- bayes.mod.fit.mcmc[[c_idx]][, param_name]
+    m <- circular_mean_half(vals, pi_jags)
+    cands <- c(m, m - pi_jags, m + pi_jags)
+    k <- which.min(abs(cands - muTruth[j]))
+    if (k != 1L) {
+      bayes.mod.fit.mcmc[[c_idx]][, param_name] <- vals + (cands[k] - m)
+    }
+  }
+}
+
+# Convergence diagnostics across all 8 chains (Gelman-Rubin Rhat and Effective Sample Size)
+stoch_cols <- setdiff(varnames(bayes.mod.fit.mcmc), "mu[1]")
+rhat_vals <- gelman.diag(bayes.mod.fit.mcmc[, stoch_cols], autoburnin = FALSE, multivariate = FALSE)$psrf[, "Point est."]
+ess_vals <- effectiveSize(bayes.mod.fit.mcmc[, stoch_cols])
+
+cat(sprintf(
+  "Convergence summary (%d chains, %d total draws):\n  Max Rhat = %.4f (%s)\n  Min ESS  = %.0f (%s)\n",
+  n_chains, n_chains * n_samples,
+  max(rhat_vals, na.rm = TRUE), names(which.max(rhat_vals)),
+  min(ess_vals, na.rm = TRUE), names(which.min(ess_vals))
+))
+
+summary(bayes.mod.fit.mcmc[, c("sigma[1]", "sigma[2]",
+                               paste0("omega3[", 1:3, "]"),
+                               paste0("omega6[", 1:6, "]"))])
 ```
 
 ### Plots
 
 ```{r plot model}
-# Convert into ggmcmc object
+# Convert into ggmcmc object using all converged chains
 bayes.mod.fit.gg <- ggs(bayes.mod.fit.mcmc)
 
-ggs_caterpillar(bayes.mod.fit.gg,
-                family = "mu",
-                thick_ci = c(0.45,0.55),
-                sort = FALSE)
+# Summarize each mu[1:72] across all chains on the half-circle [0, pi) using the MAP (posterior mode) and 95% CI
+summarize_half_circle <- function(vals, ci = c(0.025, 0.975), pi_val = pi) {
+  phi <- (2 * vals) %% (2 * pi_val)
+  phi0 <- atan2(mean(sin(phi)), mean(cos(phi)))
+  if (phi0 < 0) phi0 <- phi0 + 2 * pi_val
+  rel <- Arg(exp(1i * (phi - phi0)))
+  rel_bounds <- quantile(rel, probs = ci, names = FALSE)
+  mu_mean <- (phi0 / 2) %% pi_val
+
+  # Compute MAP (mode of kernel density) on the unwrapped draws around mu_mean
+  if (sd(rel) < 1e-12) {
+    mu_map <- mu_mean
+  } else {
+    unwrapped <- mu_mean + rel / 2
+    dens <- density(unwrapped, n = 2048)
+    mu_map <- dens$x[which.max(dens$y)] %% pi_val
+  }
+
+  list(
+    map  = mu_map,
+    mean = mu_mean,
+    low  = (mu_mean + rel_bounds[1] / 2) %% pi_val,
+    high = (mu_mean + rel_bounds[2] / 2) %% pi_val
+  )
+}
+
+mu_mat <- do.call(rbind, bayes.mod.fit.mcmc)[, paste0("mu[", 1:nStimuli, "]")]
+mu_summary <- map_dfr(seq_len(nStimuli), function(j) {
+  res <- summarize_half_circle(mu_mat[, j])
+  tibble(
+    idx = j,
+    Parameter = factor(paste0("mu[", j, "]"), levels = paste0("mu[", seq_len(nStimuli), "]")),
+    physical = muTruth[j],
+    map = res$map,
+    low = res$low,
+    high = res$high
+  )
+})
+
+# Split intervals that wrap across the pi/0 boundary (low > high) into two segments: [0, high] and [low, pi]
+mu_segments <- bind_rows(
+  mu_summary %>%
+    filter(low <= high) %>%
+    transmute(idx, Parameter, physical, y_start = low, y_end = high),
+  mu_summary %>%
+    filter(low > high) %>%
+    transmute(idx, Parameter, physical, y_start = 0, y_end = high),
+  mu_summary %>%
+    filter(low > high) %>%
+    transmute(idx, Parameter, physical, y_start = low, y_end = pi)
+)
+
+ggplot() +
+  geom_abline(slope = 1, intercept = 0, colour = "red", linewidth = 0.5) +
+  geom_segment(data = mu_segments,
+               mapping = aes(x = physical,
+                             xend = physical,
+                             y = y_start,
+                             yend = y_end),
+               colour = "steelblue") +
+  geom_point(data = mu_summary,
+             mapping = aes(x = physical,
+                           y = map),
+             colour = "steelblue",
+             size = 1.5) +
+  coord_fixed(xlim = c(0, pi), ylim = c(0, pi)) +
+  labs(x = "Physical orientation (rad)", y = "Psychological orientation (rad)") +
+  theme_minimal()
+
+ggs_density(bayes.mod.fit.gg,
+            family = "sigma")
 
 ggs_density(bayes.mod.fit.gg,
             family = "omega3")
